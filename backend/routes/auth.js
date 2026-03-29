@@ -8,6 +8,9 @@ const router = express.Router();
 router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: '请填写完整信息' });
+    }
     const existingUser = await db.users.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
       return res.status(400).json({ message: '用户名或邮箱已存在' });
@@ -21,12 +24,14 @@ router.post('/register', async (req, res) => {
       achievements: [], points: 0, streakDays: 0,
       createdAt: new Date(), updatedAt: new Date()
     });
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    const jwtSecret = process.env.JWT_SECRET || 'default_secret';
+    const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: '30d' });
     res.status(201).json({
       token,
       user: { id: user._id, username: user.username, email: user.email, profile: user.profile, dailyGoals: user.dailyGoals, points: user.points, streakDays: user.streakDays, isAdmin: user.isAdmin }
     });
   } catch (error) {
+    console.error('注册错误:', error);
     res.status(500).json({ message: '注册失败', error: error.message });
   }
 });
@@ -34,19 +39,30 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: '请输入邮箱和密码' });
+    }
+    console.log('登录尝试:', email);
     const user = await db.users.findOne({ email });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    console.log('用户查找结果:', user ? '找到' : '未找到');
+    if (!user) {
+      return res.status(401).json({ message: '邮箱或密码错误' });
+    }
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
       return res.status(401).json({ message: '邮箱或密码错误' });
     }
     if (!user.isActive) {
       return res.status(403).json({ message: '账号已被禁用' });
     }
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    const jwtSecret = process.env.JWT_SECRET || 'default_secret';
+    const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: '30d' });
     res.json({
       token,
       user: { id: user._id, username: user.username, email: user.email, profile: user.profile, dailyGoals: user.dailyGoals, points: user.points, streakDays: user.streakDays, achievements: user.achievements, isAdmin: user.isAdmin }
     });
   } catch (error) {
+    console.error('登录错误:', error);
     res.status(500).json({ message: '登录失败', error: error.message });
   }
 });
@@ -69,6 +85,7 @@ router.put('/profile', auth, async (req, res) => {
       user: { id: user._id, username: user.username, email: user.email, profile: user.profile, dailyGoals: user.dailyGoals, points: user.points, streakDays: user.streakDays, isAdmin: user.isAdmin }
     });
   } catch (error) {
+    console.error('更新错误:', error);
     res.status(500).json({ message: '更新失败', error: error.message });
   }
 });
