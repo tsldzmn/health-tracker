@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蝎子光标骨架</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0a0f;
+            overflow: hidden;
+            cursor: none;
+        }
+        canvas {
+            display: block;
+        }
+        .info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: #3a3a4a;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div class="info">移动鼠标控制蝎子</div>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+        
+        let mouseX = width / 2;
+        let mouseY = height / 2;
+        
+        // 蝎子参数
+        const SEGMENT_COUNT = 20;
+        const SEGMENT_LENGTH = 18;
+        const RIB_COUNT = 15; // 有肋骨的节数
+        
+        // 脊柱节点
+        class SpineNode {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.targetX = x;
+                this.targetY = y;
+            }
+        }
+        
+        // 初始化脊柱
+        const spine = [];
+        for (let i = 0; i < SEGMENT_COUNT; i++) {
+            spine.push(new SpineNode(width / 2 + i * SEGMENT_LENGTH, height / 2));
+        }
+        
+        // 肋骨宽度函数 - 头部和胸部较宽，尾部较细
+        function getRibWidth(index) {
+            // 前部（头/胸）宽，后部（尾）细
+            const t = index / RIB_COUNT;
+            
+            // 头部区域 (0-0.2): 逐渐变宽
+            // 胸部区域 (0.2-0.4): 最宽
+            // 腹部区域 (0.4-0.7): 逐渐变细
+            // 尾部区域 (0.7-1.0): 很细
+            
+            let width;
+            if (t < 0.15) {
+                // 头部
+                width = 8 + t * 80;
+            } else if (t < 0.4) {
+                // 胸部 - 最宽
+                width = 20 + Math.sin((t - 0.15) / 0.25 * Math.PI) * 8;
+            } else if (t < 0.7) {
+                // 腹部
+                width = 20 - (t - 0.4) * 50;
+            } else {
+                // 尾部
+                width = 5 - (t - 0.7) * 10;
+                width = Math.max(width, 1);
+            }
+            
+            return width;
+        }
+        
+        // 反向运动学 - FABRIK算法简化版
+        function solveIK() {
+            // 头部跟随鼠标
+            spine[0].targetX = mouseX;
+            spine[0].targetY = mouseY;
+            
+            // 平滑移动头部
+            spine[0].x += (spine[0].targetX - spine[0].x) * 0.3;
+            spine[0].y += (spine[0].targetY - spine[0].y) * 0.3;
+            
+            // 前向传递 - 从头部到尾部
+            for (let i = 1; i < spine.length; i++) {
+                const prev = spine[i - 1];
+                const curr = spine[i];
+                
+                const dx = curr.x - prev.x;
+                const dy = curr.y - prev.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > SEGMENT_LENGTH) {
+                    const ratio = SEGMENT_LENGTH / dist;
+                    curr.x = prev.x + dx * ratio;
+                    curr.y = prev.y + dy * ratio;
+                }
+            }
+            
+            // 后向传递 - 从尾部到头部（增加稳定性）
+            for (let i = spine.length - 2; i >= 0; i--) {
+                const next = spine[i + 1];
+                const curr = spine[i];
+                
+                const dx = curr.x - next.x;
+                const dy = curr.y - next.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > SEGMENT_LENGTH) {
+                    const ratio = SEGMENT_LENGTH / dist;
+                    curr.x = next.x + dx * ratio;
+                    curr.y = next.y + dy * ratio;
+                }
+            }
+        }
+        
+        // 获取脊柱角度
+        function getSpineAngle(index) {
+            if (index >= spine.length - 1) {
+                const prev = spine[index - 1];
+                const curr = spine[index];
+                return Math.atan2(curr.y - prev.y, curr.x - prev.x);
+            }
+            
+            const curr = spine[index];
+            const next = spine[index + 1];
+            return Math.atan2(next.y - curr.y, next.x - curr.x);
+        }
+        
+        // 绘制肋骨
+        function drawRibs() {
+            for (let i = 0; i < RIB_COUNT; i++) {
+                const node = spine[i];
+                const angle = getSpineAngle(i);
+                const ribWidth = getRibWidth(i);
+                
+                // 垂直于脊柱的方向
+                const perpAngle = angle + Math.PI / 2;
+                
+                // 肋骨两端
+                const leftX = node.x + Math.cos(perpAngle) * ribWidth;
+                const leftY = node.y + Math.sin(perpAngle) * ribWidth;
+                const rightX = node.x - Math.cos(perpAngle) * ribWidth;
+                const rightY = node.y - Math.sin(perpAngle) * ribWidth;
+                
+                // 渐变颜色
+                const t = i / RIB_COUNT;
+                const alpha = 0.3 + (1 - t) * 0.4;
+                
+                ctx.beginPath();
+                ctx.moveTo(leftX, leftY);
+                ctx.lineTo(rightX, rightY);
+                ctx.strokeStyle = `rgba(180, 140, 100, ${alpha})`;
+                ctx.lineWidth = 2 - t * 1;
+                ctx.stroke();
+                
+                // 肋骨端点发光效果
+                ctx.beginPath();
+                ctx.arc(leftX, leftY, 2 - t, 0, Math.PI * 2);
+                ctx.arc(rightX, rightY, 2 - t, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(220, 180, 140, ${alpha * 0.8})`;
+                ctx.fill();
+            }
+        }
+        
+        // 绘制脊柱
+        function drawSpine() {
+            ctx.beginPath();
+            ctx.moveTo(spine[0].x, spine[0].y);
+            
+            for (let i = 1; i < spine.length; i++) {
+                ctx.lineTo(spine[i].x, spine[i].y);
+            }
+            
+            // 脊柱渐变
+            const gradient = ctx.createLinearGradient(
+                spine[0].x, spine[0].y,
+                spine[spine.length - 1].x, spine[spine.length - 1].y
+            );
+            gradient.addColorStop(0, 'rgba(255, 200, 150, 0.9)');
+            gradient.addColorStop(0.3, 'rgba(200, 150, 100, 0.8)');
+            gradient.addColorStop(0.7, 'rgba(150, 100, 70, 0.6)');
+            gradient.addColorStop(1, 'rgba(100, 70, 50, 0.3)');
+            
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+            
+            // 脊柱节点
+            for (let i = 0; i < spine.length; i++) {
+                const t = i / spine.length;
+                const radius = 4 - t * 2;
+                const alpha = 0.9 - t * 0.5;
+                
+                ctx.beginPath();
+                ctx.arc(spine[i].x, spine[i].y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 220, 180, ${alpha})`;
+                ctx.fill();
+            }
+        }
+        
+        // 绘制头部
+        function drawHead() {
+            const head = spine[0];
+            const angle = getSpineAngle(0);
+            
+            ctx.save();
+            ctx.translate(head.x, head.y);
+            ctx.rotate(angle);
+            
+            // 头部主体
+            ctx.beginPath();
+            ctx.ellipse(10, 0, 15, 12, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(220, 180, 140, 0.9)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 220, 180, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // 眼睛
+            ctx.beginPath();
+            ctx.arc(15, -6, 3, 0, Math.PI * 2);
+            ctx.arc(15, 6, 3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 100, 100, 0.9)';
+            ctx.fill();
+            
+            // 眼睛发光
+            ctx.beginPath();
+            ctx.arc(15, -6, 5, 0, Math.PI * 2);
+            ctx.arc(15, 6, 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 100, 100, 0.2)';
+            ctx.fill();
+            
+            // 钳子
+            drawClaw(ctx, 25, -15, -0.5);
+            drawClaw(ctx, 25, 15, 0.5);
+            
+            ctx.restore();
+        }
+        
+        // 绘制钳子
+        function drawClaw(ctx, x, y, rot) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rot);
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(15, -8);
+            ctx.lineTo(18, -5);
+            ctx.lineTo(8, 0);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(200, 150, 100, 0.9)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 200, 150, 0.7)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        // 绘制尾部（带毒刺）
+        function drawTail() {
+            const tail = spine[spine.length - 1];
+            const prevNode = spine[spine.length - 2];
+            const angle = Math.atan2(tail.y - prevNode.y, tail.x - prevNode.x);
+            
+            ctx.save();
+            ctx.translate(tail.x, tail.y);
+            ctx.rotate(angle);
+            
+            // 尾刺
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(20, -3);
+            ctx.lineTo(25, 0);
+            ctx.lineTo(20, 3);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(180, 100, 80, 0.8)';
+            ctx.fill();
+            
+            // 毒刺尖端发光
+            ctx.beginPath();
+            ctx.arc(25, 0, 3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 50, 50, 0.8)';
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(25, 0, 6, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 50, 50, 0.2)';
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // 绘制腿部（简单的附肢）
+        function drawLegs() {
+            const legPositions = [3, 5, 7, 9, 11];
+            
+            legPositions.forEach((idx, legIdx) => {
+                if (idx >= spine.length) return;
+                
+                const node = spine[idx];
+                const angle = getSpineAngle(idx);
+                const perpAngle = angle + Math.PI / 2;
+                
+                const legLength = 25 - legIdx * 2;
+                const phase = Date.now() * 0.003 + legIdx;
+                
+                // 左腿
+                const leftAngle = perpAngle + Math.sin(phase) * 0.2;
+                drawLeg(node.x, node.y, leftAngle, legLength);
+                
+                // 右腿
+                const rightAngle = -perpAngle + Math.sin(phase + Math.PI) * 0.2;
+                drawLeg(node.x, node.y, rightAngle, legLength);
+            });
+        }
+        
+        function drawLeg(x, y, angle, length) {
+            const endX = x + Math.cos(angle) * length;
+            const endY = y + Math.sin(angle) * length;
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            
+            // 腿的第一段
+            const midX = x + Math.cos(angle) * length * 0.6;
+            const midY = y + Math.sin(angle) * length * 0.6;
+            
+            // 弯曲的腿
+            const bendAngle = angle + Math.PI / 4;
+            const ctrlX = midX + Math.cos(bendAngle) * 10;
+            const ctrlY = midY + Math.sin(bendAngle) * 10;
+            
+            ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
+            
+            ctx.strokeStyle = 'rgba(180, 140, 100, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // 腿尖
+            ctx.beginPath();
+            ctx.arc(endX, endY, 2, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(200, 160, 120, 0.7)';
+            ctx.fill();
+        }
+        
+        // 绘制发光效果
+        function drawGlow() {
+            // 头部光晕
+            const head = spine[0];
+            const gradient = ctx.createRadialGradient(head.x, head.y, 0, head.x, head.y, 40);
+            gradient.addColorStop(0, 'rgba(255, 150, 100, 0.15)');
+            gradient.addColorStop(1, 'rgba(255, 150, 100, 0)');
+            
+            ctx.beginPath();
+            ctx.arc(head.x, head.y, 40, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // 身体光晕
+            for (let i = 0; i < spine.length; i += 3) {
+                const t = i / spine.length;
+                const radius = 15 - t * 10;
+                const alpha = 0.1 - t * 0.05;
+                
+                const gradient2 = ctx.createRadialGradient(
+                    spine[i].x, spine[i].y, 0,
+                    spine[i].x, spine[i].y, radius
+                );
+                gradient2.addColorStop(0, `rgba(255, 200, 150, ${alpha})`);
+                gradient2.addColorStop(1, 'rgba(255, 200, 150, 0)');
+                
+                ctx.beginPath();
+                ctx.arc(spine[i].x, spine[i].y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = gradient2;
+                ctx.fill();
+            }
+        }
+        
+        // 绘制背景网格
+        function drawBackground() {
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, width, height);
+            
+            // 微妙的网格
+            ctx.strokeStyle = 'rgba(30, 30, 40, 0.5)';
+            ctx.lineWidth = 1;
+            
+            const gridSize = 50;
+            for (let x = 0; x < width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+        }
+        
+        // 主绘制函数
+        function draw() {
+            drawBackground();
+            solveIK();
+            
+            // 绘制顺序：发光 -> 肋骨 -> 腿 -> 脊柱 -> 头部 -> 尾部
+            drawGlow();
+            drawRibs();
+            drawLegs();
+            drawSpine();
+            drawHead();
+            drawTail();
+            
+            requestAnimationFrame(draw);
+        }
+        
+        // 鼠标事件
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        // 触摸支持
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            mouseX = e.touches[0].clientX;
+            mouseY = e.touches[0].clientY;
+        }, { passive: false });
+        
+        // 窗口调整
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+        
+        // 启动
+        draw();
+    </script>
+</body>
+</html>

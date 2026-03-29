@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D漂移甜甜圈</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden}
+canvas{display:block}
+#ui{position:fixed;top:15px;left:15px;color:#fff;font-family:Arial,sans-serif;font-size:14px;text-shadow:0 0 5px rgba(0,0,0,0.8)}
+#speed{font-size:24px;color:#ffd700}
+#angle{color:#0f0}
+#hud{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);display:flex;gap:15px;align-items:center}
+.btn{padding:10px 20px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;cursor:pointer;font-size:13px}
+.btn:hover{background:rgba(255,255,255,0.25)}
+.btn.active{background:rgba(255,215,0,0.3);border-color:#ffd700;color:#ffd700}
+</style>
+</head>
+<body>
+<div id="ui">
+    <div id="speed">0 km/h</div>
+    <div id="angle">漂移角度: 0°</div>
+</div>
+<div id="hud">
+    <button class="btn" onclick="toggleCamera()">🎥 切换视角</button>
+    <button class="btn" onclick="toggleSmoke()" id="smokeBtn" >💨 烟雾</button>
+    <button class="btn" onclick="toggleTires()">🔥 轮胎印</button>
+    <button class="btn" onclick="resetCar()">🔄 重置</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+var scene,camera,renderer;
+var car,carGroup;
+var clock=new THREE.Clock();
+var driftAngle=0;
+var driftSpeed=2.5;
+var driftRadius=5;
+var carTilt=0;
+var ground,sun;
+var tireMarks=[];
+var smokeParticles=[];
+var cameraMode=0;
+var showSmoke=true;
+var showTires=true;
+var time=0;
+
+function init(){
+    // 场景
+    scene=new THREE.Scene();
+    scene.background=new THREE.Color(0x1a1a2e);
+    scene.fog=new THREE.Fog(0x1a1a2e,30,80);
+    
+    // 相机
+    camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,200);
+    camera.position.set(15,10,15);
+    camera.lookAt(0,0,0);
+    
+    // 渲染器
+    renderer=new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(innerWidth,innerHeight);
+    renderer.shadowMap.enabled=true;
+    renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+    
+    // 灯光
+    var ambient=new THREE.AmbientLight(0x404060,0.5);
+    scene.add(ambient);
+    
+    sun=new THREE.DirectionalLight(0xffeedd,1.2);
+    sun.position.set(20,30,10);
+    sun.castShadow=true;
+    sun.shadow.mapSize.width=2048;
+    sun.shadow.mapSize.height=2048;
+    sun.shadow.camera.near=0.5;
+    sun.shadow.camera.far=100;
+    sun.shadow.camera.left=-30;
+    sun.shadow.camera.right=30;
+    sun.shadow.camera.top=30;
+    sun.shadow.camera.bottom=-30;
+    scene.add(sun);
+    
+    // 聚光灯
+    var spot=new THREE.SpotLight(0xff4444,0.8,50,Math.PI/6);
+    spot.position.set(-10,20,-10);
+    spot.castShadow=true;
+    scene.add(spot);
+    
+    // 地面
+    var groundGeo=new THREE.CircleGeometry(40,64);
+    var groundMat=new THREE.MeshStandardMaterial({color:0x333344,roughness:0.8,metalness:0.2});
+    ground=new THREE.Mesh(groundGeo,groundMat);
+    ground.rotation.x=-Math.PI/2;
+    ground.receiveShadow=true;
+    scene.add(ground);
+    
+    // 跑道线
+    for(var i=0;i<3;i++){
+        var ring=new THREE.Mesh(
+            new THREE.RingGeometry(4+i*6,4.3+i*6,64),
+            new THREE.MeshBasicMaterial({color:0x555566,side:THREE.DoubleSide})
+        );
+        ring.rotation.x=-Math.PI/2;
+        ring.position.y=0.01;
+        scene.add(ring);
+    }
+    
+    // 建筑物
+    createBuildings();
+    
+    // 创建汽车
+    createCar();
+    
+    // 事件
+    window.addEventListener('resize',onResize);
+    
+    animate();
+}
+
+function createBuildings(){
+    var colors=[0x4a5568,0x2d3748,0x1a202c,0x553c9a,0x2b6cb0];
+    for(var i=0;i<15;i++){
+        var h=3+Math.random()*8;
+        var w=2+Math.random()*3;
+        var geo=new THREE.BoxGeometry(w,h,w);
+        var mat=new THREE.MeshStandardMaterial({color:colors[Math.floor(Math.random()*colors.length)],roughness:0.7});
+        var building=new THREE.Mesh(geo,mat);
+        var angle=Math.random()*Math.PI*2;
+        var dist=18+Math.random()*15;
+        building.position.set(Math.cos(angle)*dist,h/2,Math.sin(angle)*dist);
+        building.castShadow=true;
+        building.receiveShadow=true;
+        scene.add(building);
+        
+        // 窗户
+        var windowGeo=new THREE.BoxGeometry(w*0.8,h*0.8,0.1);
+        var windowMat=new THREE.MeshBasicMaterial({color:0xffd700,transparent:true,opacity:0.3+Math.random()*0.3});
+        var window1=new THREE.Mesh(windowGeo,windowMat);
+        window1.position.copy(building.position);
+        window1.position.z+=w/2;
+        scene.add(window1);
+    }
+}
+
+function createCar(){
+    carGroup=new THREE.Group();
+    
+    // 车身
+    var bodyGeo=new THREE.BoxGeometry(2,0.6,4);
+    var bodyMat=new THREE.MeshStandardMaterial({color:0xff3333,metalness:0.8,roughness:0.2});
+    var body=new THREE.Mesh(bodyGeo,bodyMat);
+    body.position.y=0.5;
+    body.castShadow=true;
+    carGroup.add(body);
+    
+    // 引擎盖
+    var hoodGeo=new THREE.BoxGeometry(1.8,0.3,1.5);
+    var hood=new THREE.Mesh(hoodGeo,bodyMat);
+    hood.position.set(0,0.85,1.3);
+    hood.castShadow=true;
+    carGroup.add(hood);
+    
+    // 驾驶室
+    var cabinGeo=new THREE.BoxGeometry(1.6,0.5,1.5);
+    var cabinMat=new THREE.MeshStandardMaterial({color:0x66ccff,metalness:0.5,roughness:0.3,transparent:true,opacity:0.7});
+    var cabin=new THREE.Mesh(cabinGeo,cabinMat);
+    cabin.position.set(0,1.05,-0.2);
+    cabin.castShadow=true;
+    carGroup.add(cabin);
+    
+    // 尾翼
+    var wingGeo=new THREE.BoxGeometry(1.8,0.1,0.4);
+    var wing=new THREE.Mesh(wingGeo,bodyMat);
+    wing.position.set(0,1.3,-1.7);
+    wing.castShadow=true;
+    carGroup.add(wing);
+    
+    // 尾翼支架
+    for(var x=-0.6;x<=0.6;x+=1.2){
+        var supportGeo=new THREE.BoxGeometry(0.1,0.4,0.1);
+        var support=new THREE.Mesh(supportGeo,bodyMat);
+        support.position.set(x,1.1,-1.7);
+        carGroup.add(support);
+    }
+    
+    // 前灯
+    for(var x=-0.7;x<=0.7;x+=1.4){
+        var headlight=new THREE.Mesh(
+            new THREE.SphereGeometry(0.15,16,16),
+            new THREE.MeshBasicMaterial({color:0xffffcc})
+        );
+        headlight.position.set(x,0.5,2);
+        carGroup.add(headlight);
+        
+        var light=new THREE.PointLight(0xffffcc,0.5,8);
+        light.position.copy(headlight.position);
+        carGroup.add(light);
+    }
+    
+    // 尾灯
+    for(var x=-0.7;x<=0.7;x+=1.4){
+        var taillight=new THREE.Mesh(
+            new THREE.SphereGeometry(0.12,16,16),
+            new THREE.MeshBasicMaterial({color:0xff0000})
+        );
+        taillight.position.set(x,0.5,-2);
+        carGroup.add(taillight);
+    }
+    
+    // 轮子
+    var wheelGeo=new THREE.CylinderGeometry(0.35,0.35,0.25,16);
+    var wheelMat=new THREE.MeshStandardMaterial({color:0x111111,roughness:0.9});
+    var rimGeo=new THREE.CylinderGeometry(0.2,0.2,0.26,8);
+    var rimMat=new THREE.MeshStandardMaterial({color:0xcccccc,metalness:0.9,roughness:0.1});
+    
+    var wheelPositions=[
+        [-1,0.35,1.3],[1,0.35,1.3],
+        [-1,0.35,-1.3],[1,0.35,-1.3]
+    ];
+    
+    carGroup.wheels=[];
+    wheelPositions.forEach(function(pos){
+        var wheel=new THREE.Mesh(wheelGeo,wheelMat);
+        wheel.rotation.z=Math.PI/2;
+        wheel.position.set(pos[0],pos[1],pos[2]);
+        wheel.castShadow=true;
+        carGroup.add(wheel);
+        carGroup.wheels.push(wheel);
+        
+        var rim=new THREE.Mesh(rimGeo,rimMat);
+        rim.rotation.z=Math.PI/2;
+        rim.position.set(pos[0],pos[1],pos[2]);
+        carGroup.add(rim);
+        carGroup.wheels.push(rim);
+    });
+    
+    scene.add(carGroup);
+}
+
+function updateCar(){
+    time+=0.016;
+    
+    // 漂移角度
+    driftAngle+=driftSpeed*0.016;
+    if(driftAngle>Math.PI*2)driftAngle-=Math.PI*2;
+    
+    // 汽车位置（画圆）
+    carGroup.position.x=Math.cos(driftAngle)*driftRadius;
+    carGroup.position.z=Math.sin(driftAngle)*driftRadius;
+    
+    // 汽车朝向（车头朝圆外，漂移侧滑）
+    var carRotation=driftAngle+Math.PI/2+0.6;
+    carGroup.rotation.y=carRotation;
+    
+    // 车身倾斜
+    carTilt=Math.sin(time*15)*0.05;
+    carGroup.rotation.z=carTilt;
+    carGroup.rotation.x=Math.sin(time*10)*0.02;
+    
+    // 轮子转动
+    carGroup.wheels.forEach(function(w,i){
+        if(i%2===0)w.rotation.x+=driftSpeed*0.3;
+    });
+    
+    // 更新UI
+    document.getElementById('speed').textContent=Math.round(driftSpeed*30)+' km/h';
+    document.getElementById('angle').textContent='漂移角度: '+Math.round(Math.abs(carTilt)*1000)+'°';
+    
+    // 轮胎印
+    if(showTires&&Math.random()<0.3){
+        createTireMark(carGroup.position.clone(),carRotation);
+    }
+    
+    // 烟雾
+    if(showSmoke&&Math.random()<0.2){
+        createSmoke(carGroup.position.clone());
+    }
+}
+
+function createTireMark(pos,rot){
+    var mark=new THREE.Mesh(
+        new THREE.PlaneGeometry(0.8,0.15),
+        new THREE.MeshBasicMaterial({color:0x222222,transparent:true,opacity:0.6})
+    );
+    mark.rotation.x=-Math.PI/2;
+    mark.rotation.z=rot;
+    mark.position.copy(pos);
+    mark.position.y=0.02;
+    mark.position.x+=(Math.random()-0.5)*0.3;
+    mark.position.z+=(Math.random()-0.5)*0.3;
+    scene.add(mark);
+    tireMarks.push({mesh:mark,life:5});
+    
+    if(tireMarks.length>300){
+        var old=tireMarks.shift();
+        scene.remove(old.mesh);
+    }
+}
+
+function createSmoke(pos){
+    var smoke=new THREE.Mesh(
+        new THREE.SphereGeometry(0.3+Math.random()*0.3,8,8),
+        new THREE.MeshBasicMaterial({color:0xcccccc,transparent:true,opacity:0.4})
+    );
+    smoke.position.copy(pos);
+    smoke.position.y=0.5;
+    smoke.position.x+=(Math.random()-0.5)*2;
+    smoke.position.z+=(Math.random()-0.5)*2;
+    scene.add(smoke);
+    smokeParticles.push({mesh:smoke,vy:0.02+Math.random()*0.02,life:2,op:0.4});
+    
+    if(smokeParticles.length>100){
+        var old=smokeParticles.shift();
+        scene.remove(old.mesh);
+    }
+}
+
+function updateEffects(){
+    // 更新轮胎印
+    for(var i=tireMarks.length-1;i>=0;i--){
+        tireMarks[i].life-=0.016;
+        if(tireMarks[i].life<=0){
+            scene.remove(tireMarks[i].mesh);
+            tireMarks.splice(i,1);
+        }else{
+            tireMarks[i].mesh.material.opacity=Math.min(0.6,tireMarks[i].life*0.12);
+        }
+    }
+    
+    // 更新烟雾
+    for(var i=smokeParticles.length-1;i>=0;i--){
+        var p=smokeParticles[i];
+        p.mesh.position.y+=p.vy;
+        p.mesh.scale.multiplyScalar(1.01);
+        p.life-=0.016;
+        p.op-=0.005;
+        
+        if(p.life<=0||p.op<=0){
+            scene.remove(p.mesh);
+            smokeParticles.splice(i,1);
+        }else{
+            p.mesh.material.opacity=p.op;
+        }
+    }
+}
+
+function updateCamera(){
+    if(cameraMode===0){
+        // 固定视角
+        camera.position.set(15,10,15);
+        camera.lookAt(0,0,0);
+    }else if(cameraMode===1){
+        // 跟随视角
+        var target=new THREE.Vector3(
+            carGroup.position.x+Math.cos(driftAngle)*8,
+            5,
+            carGroup.position.z+Math.sin(driftAngle)*8
+        );
+        camera.position.lerp(target,0.05);
+        camera.lookAt(carGroup.position);
+    }else{
+        // 车内视角
+        var offset=new THREE.Vector3(0,1.5,0);
+        offset.applyAxisAngle(new THREE.Vector3(0,1,0),carGroup.rotation.y);
+        camera.position.copy(carGroup.position).add(offset);
+        camera.lookAt(carGroup.position.x+Math.cos(carGroup.rotation.y)*5,1,carGroup.position.z+Math.sin(carGroup.rotation.y)*5);
+    }
+}
+
+function animate(){
+    requestAnimationFrame(animate);
+    updateCar();
+    updateEffects();
+    updateCamera();
+    renderer.render(scene,camera);
+}
+
+function toggleCamera(){
+    cameraMode=(cameraMode+1)%3;
+}
+
+function toggleSmoke(){
+    showSmoke=!showSmoke;
+    document.getElementById('smokeBtn').classList.toggle('active',showSmoke);
+}
+
+function toggleTires(){
+    showTires=!showTires;
+}
+
+function resetCar(){
+    driftAngle=0;
+    carGroup.position.set(driftRadius,0,0);
+}
+
+function onResize(){
+    camera.aspect=innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+}
+
+// 初始化
+init();
+</script>
+</body>
+</html>

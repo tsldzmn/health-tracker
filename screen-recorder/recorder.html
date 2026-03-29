@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>屏幕录制工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',Arial,sans-serif;background:#0f0f1a;color:#fff;min-height:100vh;display:flex;flex-direction:column}
+.header{text-align:center;padding:20px;background:linear-gradient(135deg,#1a1a2e,#16213e)}
+.header h1{font-size:28px;color:#ffd700;margin-bottom:5px}
+.header p{color:#888;font-size:13px}
+.main{flex:1;display:flex;gap:20px;padding:20px;max-width:1200px;margin:0 auto;width:100%}
+.left{flex:1;display:flex;flex-direction:column;gap:15px}
+.right{width:320px;display:flex;flex-direction:column;gap:15px}
+.card{background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03));border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:18px}
+.card h3{font-size:14px;color:#aaa;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h3 span{font-size:16px}
+.preview{background:#000;border-radius:12px;overflow:hidden;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;position:relative}
+.preview video{width:100%;height:100%;object-fit:contain}
+.preview .placeholder{color:#555;text-align:center;font-size:14px}
+.preview .placeholder span{display:block;font-size:40px;margin-bottom:10px}
+.rec-indicator{position:absolute;top:10px;right:10px;background:rgba(255,0,0,0.9);color:#fff;padding:4px 12px;border-radius:20px;font-size:12px;display:none;align-items:center;gap:6px}
+.rec-indicator.active{display:flex;animation:pulse 1s infinite}
+.rec-dot{width:8px;height:8px;border-radius:50%;background:#fff}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.controls{display:flex;gap:10px;flex-wrap:wrap}
+.btn{padding:12px 24px;font-size:14px;border:2px solid;border-radius:8px;cursor:pointer;background:transparent;color:#fff;transition:all 0.2s;display:flex;align-items:center;gap:8px}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn:active:not(:disabled){transform:scale(0.96)}
+.btn-primary{border-color:#4CAF50}
+.btn-primary:hover:not(:disabled){background:#4CAF50}
+.btn-danger{border-color:#f44336}
+.btn-danger:hover:not(:disabled){background:#f44336}
+.btn-secondary{border-color:#666}
+.btn-secondary:hover:not(:disabled){background:#444}
+.btn-gold{border-color:#ffd700}
+.btn-gold:hover:not(:disabled){background:rgba(255,215,0,0.2)}
+.setting{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.setting:last-child{margin-bottom:0}
+.setting label{font-size:13px;color:#ccc}
+.setting select,.setting input[type=number]{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:6px 10px;border-radius:6px;font-size:13px}
+.toggle{position:relative;width:44px;height:24px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0}
+.toggle .slider{position:absolute;top:0;left:0;right:0;bottom:0;background:#333;border-radius:24px;transition:0.3s}
+.toggle .slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.3s}
+.toggle input:checked+.slider{background:#4CAF50}
+.toggle input:checked+.slider:before{transform:translateX(20px)}
+.file-list{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.file-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:12px}
+.file-item .name{color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:150px}
+.file-item .actions{display:flex;gap:5px}
+.file-item button{padding:4px 8px;font-size:11px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:#fff;border-radius:4px;cursor:pointer}
+.file-item button:hover{background:rgba(255,255,255,0.1)}
+.timer{font-size:32px;font-family:monospace;color:#ffd700;text-align:center;padding:10px}
+.timer.hidden{display:none}
+.hotkey{font-size:11px;color:#666;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="header">
+    <h1>🎬 屏幕录制工具</h1>
+    <p>简单易用的屏幕录制软件 | 支持全屏/窗口/标签页录制</p>
+</div>
+<div class="main">
+    <div class="left">
+        <div class="preview">
+            <div class="placeholder" id="placeholder">
+                <span>📺</span>
+                点击"开始录制"选择要录制的屏幕
+            </div>
+            <video id="preview" autoplay muted style="display:none"></video>
+            <div class="rec-indicator" id="recIndicator">
+                <div class="rec-dot"></div> REC
+            </div>
+        </div>
+        <div class="timer hidden" id="timer">00:00:00</div>
+        <div class="controls">
+            <button class="btn btn-primary" id="startBtn" onclick="startRecording()">⏺ 开始录制</button>
+            <button class="btn btn-danger" id="stopBtn" onclick="stopRecording()" disabled>⏹ 停止录制</button>
+            <button class="btn btn-secondary" id="pauseBtn" onclick="togglePause()" disabled>⏸ 暂停</button>
+        </div>
+        <div class="hotkey">
+            快捷键：<kbd>Ctrl+Shift+R</kbd> 开始/停止 | <kbd>Ctrl+Shift+P</kbd> 暂停/继续
+        </div>
+    </div>
+    <div class="right">
+        <div class="card">
+            <h3><span>⚙️</span> 录制设置</h3>
+            <div class="setting">
+                <label>视频格式</label>
+                <select id="format">
+                    <option value="webm">WebM (推荐)</option>
+                    <option value="mp4">MP4 (若支持)</option>
+                </select>
+            </div>
+            <div class="setting">
+                <label>视频质量</label>
+                <select id="quality">
+                    <option value="high">高清 (1080p)</option>
+                    <option value="medium" selected>标清 (720p)</option>
+                    <option value="low">流畅 (480p)</option>
+                </select>
+            </div>
+            <div class="setting">
+                <label>帧率</label>
+                <select id="fps">
+                    <option value="60">60 FPS</option>
+                    <option value="30" selected>30 FPS</option>
+                    <option value="15">15 FPS</option>
+                </select>
+            </div>
+        </div>
+        <div class="card">
+            <h3><span>🎤</span> 音频设置</h3>
+            <div class="setting">
+                <label>系统音频</label>
+                <label class="toggle"><input type="checkbox" id="systemAudio" checked><span class="slider"></span></label>
+            </div>
+            <div class="setting">
+                <label>麦克风</label>
+                <label class="toggle"><input type="checkbox" id="micAudio"><span class="slider"></span></label>
+            </div>
+        </div>
+        <div class="card">
+            <h3><span>📁</span> 录制文件</h3>
+            <div class="file-list" id="fileList">
+                <div style="color:#555;font-size:12px;text-align:center;padding:15px">暂无录制文件</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var mediaRecorder=null;
+var recordedChunks=[];
+var stream=null;
+var isRecording=false;
+var isPaused=false;
+var timerInterval=null;
+var startTime=0;
+var pausedTime=0;
+var files=[];
+
+async function startRecording(){
+    if(isRecording)return;
+    
+    try{
+        // 获取屏幕录制流
+        var constraints={video:{}};
+        var quality=document.getElementById('quality').value;
+        var fps=parseInt(document.getElementById('fps').value);
+        
+        switch(quality){
+            case 'high':constraints.video={width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:fps}};break;
+            case 'medium':constraints.video={width:{ideal:1280},height:{ideal:720},frameRate:{ideal:fps}};break;
+            case 'low':constraints.video={width:{ideal:854},height:{ideal:480},frameRate:{ideal:fps}};break;
+        }
+        
+        // 获取屏幕流
+        stream=await navigator.mediaDevices.getDisplayMedia(constraints);
+        
+        // 添加音频
+        var audioTracks=[];
+        if(document.getElementById('systemAudio').checked){
+            try{
+                var audioStream=await navigator.mediaDevices.getDisplayMedia({video:false,audio:true});
+                audioTracks=audioTracks.concat(audioStream.getAudioTracks());
+            }catch(e){console.log('系统音频不可用');}
+        }
+        if(document.getElementById('micAudio').checked){
+            try{
+                var micStream=await navigator.mediaDevices.getUserMedia({audio:true});
+                audioTracks=audioTracks.concat(micStream.getAudioTracks());
+            }catch(e){console.log('麦克风不可用');}
+        }
+        
+        // 合并音视频轨道
+        var tracks=stream.getVideoTracks().concat(audioTracks);
+        var combinedStream=new MediaStream(tracks);
+        
+        // 选择格式
+        var mimeType='video/webm;codecs=vp9';
+        if(!MediaRecorder.isTypeSupported(mimeType)){
+            mimeType='video/webm;codecs=vp8';
+            if(!MediaRecorder.isTypeSupported(mimeType)){
+                mimeType='video/webm';
+            }
+        }
+        if(document.getElementById('format').value==='mp4'){
+            if(MediaRecorder.isTypeSupported('video/mp4')){
+                mimeType='video/mp4';
+            }
+        }
+        
+        // 创建录制器
+        recordedChunks=[];
+        mediaRecorder=new MediaRecorder(combinedStream,{mimeType:mimeType,videoBitsPerSecond:quality==='high'?5000000:quality==='medium'?2500000:1000000});
+        
+        mediaRecorder.ondataavailable=function(e){
+            if(e.data.size>0)recordedChunks.push(e.data);
+        };
+        
+        mediaRecorder.onstop=function(){
+            var blob=new Blob(recordedChunks,{type:mimeType});
+            saveRecording(blob);
+            
+            // 清理
+            stream.getTracks().forEach(function(t){t.stop();});
+            isRecording=false;
+            updateUI();
+            
+            document.getElementById('preview').srcObject=null;
+            document.getElementById('preview').style.display='none';
+            document.getElementById('placeholder').style.display='block';
+        };
+        
+        // 显示预览
+        var preview=document.getElementById('preview');
+        preview.srcObject=combinedStream;
+        preview.style.display='block';
+        document.getElementById('placeholder').style.display='none';
+        
+        // 开始录制
+        mediaRecorder.start(1000);
+        isRecording=true;
+        isPaused=false;
+        startTime=Date.now();
+        pausedTime=0;
+        
+        // 启动计时器
+        timerInterval=setInterval(updateTimer,1000);
+        document.getElementById('timer').classList.remove('hidden');
+        document.getElementById('recIndicator').classList.add('active');
+        
+        updateUI();
+        
+        // 用户停止共享时自动停止
+        stream.getVideoTracks()[0].onended=function(){
+            if(isRecording)stopRecording();
+        };
+        
+    }catch(err){
+        console.error('录制失败:',err);
+        alert('录制失败：'+err.message);
+    }
+}
+
+function stopRecording(){
+    if(!isRecording||!mediaRecorder)return;
+    mediaRecorder.stop();
+    clearInterval(timerInterval);
+    document.getElementById('timer').classList.add('hidden');
+    document.getElementById('recIndicator').classList.remove('active');
+}
+
+function togglePause(){
+    if(!isRecording)return;
+    if(isPaused){
+        mediaRecorder.resume();
+        startTime+=Date.now()-(startTime+pausedTime);
+        timerInterval=setInterval(updateTimer,1000);
+        isPaused=false;
+    }else{
+        mediaRecorder.pause();
+        clearInterval(timerInterval);
+        pausedTime=Date.now()-startTime;
+        isPaused=true;
+    }
+    updateUI();
+}
+
+function saveRecording(blob){
+    var format=document.getElementById('format').value;
+    var ext=format==='mp4'?'mp4':'webm';
+    var now=new Date();
+    var name='录屏_'+now.getFullYear()+(now.getMonth()+1).toString().padStart(2,'0')+now.getDate().toString().padStart(2,'0')+'_'+now.getHours().toString().padStart(2,'0')+now.getMinutes().toString().padStart(2,'0')+now.getSeconds().toString().padStart(2,'0')+'.'+ext;
+    
+    files.push({name:name,blob:blob,size:blob.size,time:now});
+    updateFileList();
+    
+    // 自动下载
+    downloadFile(files.length-1);
+}
+
+function downloadFile(index){
+    var file=files[index];
+    var url=URL.createObjectURL(file.blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download=file.name;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function deleteFile(index){
+    files.splice(index,1);
+    updateFileList();
+}
+
+function updateFileList(){
+    var list=document.getElementById('fileList');
+    if(files.length===0){
+        list.innerHTML='<div style="color:#555;font-size:12px;text-align:center;padding:15px">暂无录制文件</div>';
+        return;
+    }
+    list.innerHTML='';
+    files.forEach(function(f,i){
+        var size=f.size>1048576?(f.size/1048576).toFixed(1)+'MB':(f.size/1024).toFixed(1)+'KB';
+        var div=document.createElement('div');
+        div.className='file-item';
+        div.innerHTML='<span class="name">'+f.name+'</span><span style="color:#666">'+size+'</span><div class="actions"><button onclick="downloadFile('+i+')">⬇️</button><button onclick="deleteFile('+i+')">🗑️</button></div>';
+        list.appendChild(div);
+    });
+}
+
+function updateTimer(){
+    var elapsed=Math.floor((Date.now()-startTime)/1000);
+    var h=Math.floor(elapsed/3600).toString().padStart(2,'0');
+    var m=Math.floor((elapsed%3600)/60).toString().padStart(2,'0');
+    var s=(elapsed%60).toString().padStart(2,'0');
+    document.getElementById('timer').textContent=h+':'+m+':'+s;
+}
+
+function updateUI(){
+    document.getElementById('startBtn').disabled=isRecording;
+    document.getElementById('stopBtn').disabled=!isRecording;
+    document.getElementById('pauseBtn').disabled=!isRecording;
+    document.getElementById('pauseBtn').innerHTML=isPaused?'▶️ 继续':'⏸ 暂停';
+}
+
+// 快捷键
+document.addEventListener('keydown',function(e){
+    if(e.ctrlKey&&e.shiftKey){
+        if(e.code==='KeyR'){
+            e.preventDefault();
+            if(isRecording)stopRecording();else startRecording();
+        }
+        if(e.code==='KeyP'){
+            e.preventDefault();
+            if(isRecording)togglePause();
+        }
+    }
+});
+
+// 初始化
+updateUI();
+</script>
+</body>
+</html>

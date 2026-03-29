@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>球球大作战</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;font-family:'Microsoft YaHei',Arial,sans-serif}
+canvas{display:block}
+#startScreen{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#0a0a2e,#1a1a4e,#0a2a4e);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#startScreen h1{font-size:60px;color:#fff;text-shadow:0 0 30px #00d4ff,0 0 60px #00d4ff;margin-bottom:40px;letter-spacing:5px}
+#startScreen .subtitle{color:#88ccff;font-size:16px;margin-bottom:30px}
+#startScreen input{width:280px;padding:12px 20px;font-size:18px;border:2px solid #00d4ff;border-radius:30px;background:rgba(255,255,255,0.1);color:#fff;text-align:center;outline:none;margin-bottom:20px}
+#startScreen input::placeholder{color:rgba(255,255,255,0.4)}
+#startScreen input:focus{box-shadow:0 0 20px rgba(0,212,255,0.5)}
+.colorRow{display:flex;gap:12px;margin-bottom:30px}
+.colorBtn{width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all 0.2s}
+.colorBtn:hover,.colorBtn.sel{border-color:#fff;transform:scale(1.2)}
+#startBtn{padding:14px 50px;font-size:20px;background:linear-gradient(90deg,#00d4ff,#0088ff);color:#fff;border:none;border-radius:30px;cursor:pointer;font-weight:bold;letter-spacing:2px;transition:all 0.3s}
+#startBtn:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(0,212,255,0.6)}
+.controls{color:#aaa;font-size:13px;margin-top:25px;text-align:center;line-height:2}
+.controls span{color:#00d4ff}
+#hud{position:fixed;top:10px;left:10px;z-index:10;pointer-events:none}
+.hudItem{color:#fff;font-size:14px;margin-bottom:5px;text-shadow:1px 1px 3px #000}
+#leaderboard{position:fixed;top:10px;right:10px;background:rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 16px;z-index:10;min-width:160px;pointer-events:none}
+#leaderboard h3{color:#00d4ff;font-size:14px;margin-bottom:8px;text-align:center}
+.lbItem{display:flex;justify-content:space-between;color:#ccc;font-size:12px;padding:2px 0}
+.lbItem.me{color:#00ff88;font-weight:bold}
+.lbItem .lbName{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#minimap{position:fixed;bottom:10px;right:10px;border:2px solid rgba(255,255,255,0.2);border-radius:8px;z-index:10;pointer-events:none}
+#deathScreen{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:50}
+#deathScreen h2{color:#ff6b6b;font-size:48px;margin-bottom:15px}
+#deathScreen p{color:#ccc;font-size:18px;margin-bottom:25px}
+#deathScreen button{padding:12px 40px;font-size:18px;background:linear-gradient(90deg,#00d4ff,#0088ff);color:#fff;border:none;border-radius:30px;cursor:pointer;font-weight:bold}
+#deathScreen button:hover{transform:scale(1.05)}
+#mobileControls{display:none;position:fixed;bottom:20px;left:20px;z-index:20}
+#mobileControls button{width:60px;height:60px;border-radius:50%;border:2px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:bold;margin:5px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+@media(max-width:768px){#mobileControls{display:flex}#startScreen h1{font-size:36px}}
+</style>
+</head>
+<body>
+<div id="startScreen">
+    <h1>球球大作战</h1>
+    <div class="subtitle">BATTLE OF THE BALLS</div>
+    <input type="text" id="nameInput" placeholder="输入你的昵称" maxlength="12">
+    <div class="colorRow" id="colorRow"></div>
+    <button id="startBtn" onclick="startGame()">开始游戏</button>
+    <div class="controls">
+        <span>鼠标</span> 移动控制方向 &nbsp;|&nbsp; <span>W</span> 吐球 &nbsp;|&nbsp; <span>空格</span> 分裂<br>
+        <span>Shift</span> 减速 &nbsp;|&nbsp; <span>Z</span> 重新合并
+    </div>
+</div>
+<canvas id="gameCanvas"></canvas>
+<div id="hud">
+    <div class="hudItem" id="massHud">质量: 10</div>
+    <div class="hudItem" id="rankHud">排名: 1</div>
+    <div class="hudItem" id="aliveHud">存活: 1</div>
+</div>
+<div id="leaderboard"><h3>排行榜</h3><div id="lbList"></div></div>
+<canvas id="minimap" width="160" height="160"></canvas>
+<div id="deathScreen">
+    <h2>你被吃掉了!</h2>
+    <p id="deathInfo"></p>
+    <button onclick="restartGame()">再来一局</button>
+</div>
+<div id="mobileControls">
+    <button ontouchstart="mobileSplit()" onclick="mobileSplit()">分裂</button>
+    <button ontouchstart="mobileEject()" onclick="mobileEject()">吐球</button>
+</div>
+
+<script>
+const COLORS = [
+    '#ff6b6b','#ffa502','#ffd43b','#51cf66','#339af0',
+    '#cc5de8','#ff8787','#74c0fc','#63e6be','#e599f7',
+    '#ff922b','#20c997','#845ef7','#f06595','#fab005'
+];
+
+const WORLD_W = 8000, WORLD_H = 8000;
+const PELLET_COUNT = 1500;
+const VIRUS_COUNT = 30;
+const BOT_COUNT = 49;
+const MIN_SPLIT_MASS = 36;
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const mmCanvas = document.getElementById('minimap');
+const mmCtx = mmCanvas.getContext('2d');
+
+let W, H;
+function resize() {
+    W = canvas.width = innerWidth;
+    H = canvas.height = innerHeight;
+}
+resize();
+addEventListener('resize', resize);
+
+// Color picker
+const colorRow = document.getElementById('colorRow');
+let selectedColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+COLORS.forEach(c => {
+    const btn = document.createElement('div');
+    btn.className = 'colorBtn' + (c === selectedColor ? ' sel' : '');
+    btn.style.background = c;
+    btn.onclick = () => {
+        document.querySelectorAll('.colorBtn').forEach(b => b.classList.remove('sel'));
+        btn.classList.add('sel');
+        selectedColor = c;
+    };
+    colorRow.appendChild(btn);
+});
+
+// Game state
+let pellets = [], viruses = [], players = [], ejects = [];
+let myId = null;
+let mouseX = 0, mouseY = 0;
+let mouseDirX = 0, mouseDirY = 0;
+let cameraX = 0, cameraY = 0, cameraScale = 1;
+let gameRunning = false;
+let shiftDown = false, zDown = false;
+
+class Cell {
+    constructor(x, y, mass, color, owner, vx, vy) {
+        this.x = x; this.y = y;
+        this.mass = mass;
+        this.color = color;
+        this.owner = owner;
+        this.vx = vx || 0;
+        this.vy = vy || 0;
+        this.lastX = x; this.lastY = y;
+    }
+    get radius() { return Math.sqrt(this.mass / Math.PI) * 6; }
+}
+
+class Player {
+    constructor(id, name, color, isBot) {
+        this.id = id;
+        this.name = name;
+        this.color = color;
+        this.isBot = !!isBot;
+        this.cells = [];
+        this.alive = true;
+        this.score = 0;
+        this.botDirX = (Math.random() - 0.5) * 2;
+        this.botDirY = (Math.random() - 0.5) * 2;
+        this.botTimer = Math.random() * 2;
+    }
+    get totalMass() {
+        let m = 0;
+        this.cells.forEach(c => m += c.mass);
+        return m;
+    }
+    get center() {
+        if (this.cells.length === 0) return { x: WORLD_W / 2, y: WORLD_H / 2 };
+        let cx = 0, cy = 0, tw = 0;
+        this.cells.forEach(c => { cx += c.x * c.mass; cy += c.y * c.mass; tw += c.mass; });
+        return { x: cx / tw, y: cy / tw };
+    }
+    spawn() {
+        const x = 200 + Math.random() * (WORLD_W - 400);
+        const y = 200 + Math.random() * (WORLD_H - 400);
+        this.cells = [new Cell(x, y, 10, this.color, this.id)];
+        this.alive = true;
+    }
+}
+
+function initGame() {
+    pellets = [];
+    viruses = [];
+    players = [];
+    ejects = [];
+
+    for (let i = 0; i < PELLET_COUNT; i++) spawnPellet();
+    for (let i = 0; i < VIRUS_COUNT; i++) spawnVirus();
+
+    // Create bots
+    const botNames = ['小明','小红','小刚','小美','阿强','阿花','大壮','小丽','老王','小李',
+        'Tom','Jerry','Mike','Amy','Leo','Max','Luna','Jack','Lily','Rose',
+        '战神','影子','风暴','闪电','冰霜','火焰','星辰','月亮','太阳','流星',
+        '无敌','超级','厉害','最强','霸气','帅气','可爱','温柔','聪明','机智',
+        '大佬','萌新','大神','王者','传说','永恒','荣耀','光辉','英雄','勇士'];
+    for (let i = 0; i < BOT_COUNT; i++) {
+        const p = new Player(100 + i, botNames[i % botNames.length], COLORS[Math.floor(Math.random() * COLORS.length)], true);
+        p.spawn();
+        players.push(p);
+    }
+}
+
+function spawnPellet() {
+    pellets.push({
+        x: Math.random() * WORLD_W,
+        y: Math.random() * WORLD_H,
+        mass: 1 + Math.random() * 2,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)]
+    });
+}
+
+function spawnVirus() {
+    viruses.push({
+        x: 200 + Math.random() * (WORLD_W - 400),
+        y: 200 + Math.random() * (WORLD_H - 400),
+        mass: 120 + Math.random() * 80,
+        color: '#4a7c59',
+        spikes: 10 + Math.floor(Math.random() * 6)
+    });
+}
+
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+function canEat(big, small) {
+    return big.mass > small.mass * 1.15 && dist(big, small) < big.radius - small.radius * 0.4;
+}
+
+function updatePhysics(dt) {
+    const me = players.find(p => p.id === myId);
+
+    players.forEach(p => {
+        if (!p.alive) return;
+        const speed = 35;
+
+        p.cells.forEach(cell => {
+            let dirX, dirY;
+            if (!p.isBot && me) {
+                dirX = mouseDirX;
+                dirY = mouseDirY;
+            } else {
+                dirX = p.botDirX || 0;
+                dirY = p.botDirY || 0;
+            }
+
+            let sp = speed / Math.pow(cell.mass / 10, 0.32);
+            if (!p.isBot && shiftDown) sp *= 0.3;
+
+            const targetVX = dirX * sp;
+            const targetVY = dirY * sp;
+            cell.vx += (targetVX - cell.vx) * 0.03;
+            cell.vy += (targetVY - cell.vy) * 0.03;
+
+            cell.x += cell.vx * dt;
+            cell.y += cell.vy * dt;
+
+            cell.x = Math.max(cell.radius, Math.min(WORLD_W - cell.radius, cell.x));
+            cell.y = Math.max(cell.radius, Math.min(WORLD_H - cell.radius, cell.y));
+        });
+
+        // Cell repulsion
+        for (let i = 0; i < p.cells.length; i++) {
+            for (let j = i + 1; j < p.cells.length; j++) {
+                const a = p.cells[i], b = p.cells[j];
+                const d = dist(a, b);
+                const minD = a.radius + b.radius;
+                if (d < minD && d > 0) {
+                    const overlap = (minD - d) / 2;
+                    const nx = (b.x - a.x) / d;
+                    const ny = (b.y - a.y) / d;
+                    a.x -= nx * overlap * 0.5;
+                    a.y -= ny * overlap * 0.5;
+                    b.x += nx * overlap * 0.5;
+                    b.y += ny * overlap * 0.5;
+                }
+            }
+        }
+
+        // Merge cells with Z or after timer
+        if (p.cells.length > 1) {
+            for (let i = p.cells.length - 1; i >= 0; i--) {
+                for (let j = i - 1; j >= 0; j--) {
+                    const a = p.cells[i], b = p.cells[j];
+                    if (dist(a, b) < (a.radius + b.radius) * 0.5 && (!p.isBot && zDown || p.isBot)) {
+                        b.mass += a.mass;
+                        p.cells.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Mass decay
+        p.cells.forEach(cell => {
+            if (cell.mass > 20) {
+                cell.mass -= cell.mass * 0.0002 * dt;
+            }
+        });
+    });
+
+    // Eject mass
+    players.forEach(p => {
+        if (p.isBot) return;
+        // handled in keydown
+    });
+
+    // Eject physics
+    for (let i = ejects.length - 1; i >= 0; i--) {
+        const e = ejects[i];
+        e.x += e.vx * dt;
+        e.y += e.vy * dt;
+        e.vx *= 0.97;
+        e.vy *= 0.97;
+        if (e.x < 0 || e.x > WORLD_W || e.y < 0 || e.y > WORLD_H) {
+            ejects.splice(i, 1);
+        }
+    }
+
+    // Eating pellets
+    players.forEach(p => {
+        if (!p.alive) return;
+        p.cells.forEach(cell => {
+            for (let i = pellets.length - 1; i >= 0; i--) {
+                if (dist(cell, pellets[i]) < cell.radius) {
+                    cell.mass += pellets[i].mass;
+                    pellets.splice(i, 1);
+                    spawnPellet();
+                }
+            }
+            // Eat ejects
+            for (let i = ejects.length - 1; i >= 0; i--) {
+                if (dist(cell, ejects[i]) < cell.radius) {
+                    cell.mass += ejects[i].mass;
+                    ejects.splice(i, 1);
+                }
+            }
+        });
+    });
+
+    // Eating other players
+    for (let i = 0; i < players.length; i++) {
+        const a = players[i];
+        if (!a.alive) continue;
+        for (let j = 0; j < players.length; j++) {
+            if (i === j) continue;
+            const b = players[j];
+            if (!b.alive) continue;
+            for (let ai = a.cells.length - 1; ai >= 0; ai--) {
+                for (let bi = b.cells.length - 1; bi >= 0; bi--) {
+                    if (canEat(a.cells[ai], b.cells[bi])) {
+                        a.cells[ai].mass += b.cells[bi].mass;
+                        b.cells.splice(bi, 1);
+                        if (b.cells.length === 0) {
+                            b.alive = false;
+                            b.score = Math.floor(b.totalMass || 0);
+                            if (b.id === myId) {
+                                showDeath(b.score);
+                            } else if (b.isBot) {
+                                setTimeout(() => { b.spawn(); }, 3000 + Math.random() * 5000);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Virus collision
+    players.forEach(p => {
+        if (!p.alive) return;
+        for (let ci = p.cells.length - 1; ci >= 0; ci--) {
+            const cell = p.cells[ci];
+            for (let vi = viruses.length - 1; vi >= 0; vi--) {
+                const v = viruses[vi];
+                if (cell.mass > v.mass && dist(cell, v) < cell.radius) {
+                    // Pop!
+                    const parts = Math.min(16, Math.floor(cell.mass / 10));
+                    const partMass = cell.mass / parts;
+                    for (let k = 0; k < parts; k++) {
+                        const angle = (k / parts) * Math.PI * 2;
+                        const nc = new Cell(
+                            cell.x + Math.cos(angle) * cell.radius,
+                            cell.y + Math.sin(angle) * cell.radius,
+                            partMass, cell.color, p.id,
+                            Math.cos(angle) * 100,
+                            Math.sin(angle) * 100
+                        );
+                        p.cells.push(nc);
+                    }
+                    p.cells.splice(ci, 1);
+                    viruses.splice(vi, 1);
+                    spawnVirus();
+                    break;
+                }
+            }
+        }
+    });
+
+    // Re-absorb split cells velocity
+    players.forEach(p => {
+        p.cells.forEach(cell => {
+            cell.vx *= 0.95;
+            cell.vy *= 0.95;
+        });
+    });
+
+    // Bot AI
+    players.forEach(p => {
+        if (!p.isBot || !p.alive) return;
+        p.botTimer -= dt;
+        if (p.botTimer <= 0) {
+            p.botTimer = 1 + Math.random() * 2;
+            const center = p.center;
+            let bestDirX = p.botDirX || 0;
+            let bestDirY = p.botDirY || 0;
+            let foundThreat = false;
+
+            // Look for smaller players to chase (highest priority)
+            let chaseX = 0, chaseY = 0, chaseDist = Infinity;
+            let fleeX = 0, fleeY = 0, fleeDist = Infinity;
+            players.forEach(other => {
+                if (other.id === p.id || !other.alive) return;
+                const d = dist(center, other.center);
+                if (other.totalMass < p.totalMass * 0.8 && d < 800 && d < chaseDist) {
+                    chaseDist = d;
+                    chaseX = other.center.x;
+                    chaseY = other.center.y;
+                }
+                if (other.totalMass > p.totalMass * 1.2 && d < 500 && d < fleeDist) {
+                    fleeDist = d;
+                    fleeX = other.center.x;
+                    fleeY = other.center.y;
+                    foundThreat = true;
+                }
+            });
+
+            if (foundThreat) {
+                bestDirX = center.x - fleeX;
+                bestDirY = center.y - fleeY;
+            } else if (chaseDist < 800) {
+                bestDirX = chaseX - center.x;
+                bestDirY = chaseY - center.y;
+            } else {
+                // Find nearest food
+                let foodDist = Infinity, foodX = 0, foodY = 0;
+                for (let i = 0; i < pellets.length; i++) {
+                    const pl = pellets[i];
+                    const d = dist(center, pl);
+                    if (d < 500 && d < foodDist) {
+                        foodDist = d;
+                        foodX = pl.x;
+                        foodY = pl.y;
+                    }
+                }
+                if (foodDist < 500) {
+                    bestDirX = foodX - center.x;
+                    bestDirY = foodY - center.y;
+                } else {
+                    // Random wander with slight angle change
+                    const angle = Math.atan2(bestDirY, bestDirX) + (Math.random() - 0.5) * 1.5;
+                    bestDirX = Math.cos(angle);
+                    bestDirY = Math.sin(angle);
+                }
+            }
+
+            // Normalize
+            const len = Math.hypot(bestDirX, bestDirY) || 1;
+            p.botDirX = bestDirX / len;
+            p.botDirY = bestDirY / len;
+        }
+
+        // Bot split
+        if (p.cells.length < 4 && p.totalMass > 80 && Math.random() < 0.003) {
+            botSplit(p);
+        }
+    });
+}
+
+function botSplit(p) {
+    const cell = p.cells[0];
+    if (!cell || cell.mass < MIN_SPLIT_MASS * 2) return;
+    const half = cell.mass / 2;
+    cell.mass = half;
+    const angle = Math.atan2(p.botDirY || 0, p.botDirX || 1);
+        const nc = new Cell(cell.x, cell.y, half, cell.color, p.id,
+            Math.cos(angle) * 400, Math.sin(angle) * 400);
+    p.cells.push(nc);
+}
+
+function doSplit(p) {
+    if (!p || !p.alive) return;
+    const newCells = [];
+    p.cells.forEach(cell => {
+        if (cell.mass < MIN_SPLIT_MASS * 2) { newCells.push(cell); return; }
+        const half = cell.mass / 2;
+        cell.mass = half;
+        let dx, dy;
+        if (!p.isBot) {
+            dx = mouseDirX;
+            dy = mouseDirY;
+        } else {
+            dx = p.botDirX || 0;
+            dy = p.botDirY || 1;
+        }
+        const d = Math.hypot(dx, dy) || 1;
+        const nc = new Cell(cell.x, cell.y, half, cell.color, p.id,
+            (dx / d) * 100, (dy / d) * 100);
+        newCells.push(cell, nc);
+    });
+    if (newCells.length <= 16) p.cells = newCells;
+}
+
+function doEject(p) {
+    if (!p || !p.alive) return;
+    p.cells.forEach(cell => {
+        if (cell.mass < 20) return;
+        cell.mass -= 4;
+        let dx, dy;
+        if (!p.isBot) {
+            dx = mouseDirX;
+            dy = mouseDirY;
+        } else {
+            dx = p.botDirX || 0;
+            dy = p.botDirY || 1;
+        }
+        const d = Math.hypot(dx, dy) || 1;
+        ejects.push({
+            x: cell.x + (dx / d) * cell.radius,
+            y: cell.y + (dy / d) * cell.radius,
+            vx: (dx / d) * 80,
+            vy: (dy / d) * 80,
+            mass: 3,
+            color: cell.color
+        });
+    });
+}
+
+function showDeath(score) {
+    document.getElementById('deathInfo').textContent = `最终质量: ${Math.floor(score)}`;
+    document.getElementById('deathScreen').style.display = 'flex';
+    gameRunning = false;
+}
+
+function restartGame() {
+    document.getElementById('deathScreen').style.display = 'none';
+    const me = players.find(p => p.id === myId);
+    if (me) { me.spawn(); }
+    gameRunning = true;
+    requestAnimationFrame(gameLoop);
+}
+
+function updateCamera() {
+    const me = players.find(p => p.id === myId);
+    if (!me || !me.alive || me.cells.length === 0) return;
+    const center = me.center;
+    cameraX += (center.x - cameraX) * 0.08;
+    cameraY += (center.y - cameraY) * 0.08;
+    const maxR = Math.max(...me.cells.map(c => c.radius));
+    const targetScale = Math.min(1, 60 / maxR);
+    cameraScale += (targetScale - cameraScale) * 0.05;
+}
+
+function drawGrid() {
+    const gridSize = 50;
+    const startX = Math.floor((cameraX - W / 2 / cameraScale) / gridSize) * gridSize;
+    const startY = Math.floor((cameraY - H / 2 / cameraScale) / gridSize) * gridSize;
+    const endX = cameraX + W / 2 / cameraScale;
+    const endY = cameraY + H / 2 / cameraScale;
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = startX; x <= endX; x += gridSize) {
+        ctx.moveTo(x, startY);
+        ctx.lineTo(x, endY);
+    }
+    for (let y = startY; y <= endY; y += gridSize) {
+        ctx.moveTo(startX, y);
+        ctx.lineTo(endX, y);
+    }
+    ctx.stroke();
+
+    // World border
+    ctx.strokeStyle = 'rgba(255,0,0,0.5)';
+    ctx.lineWidth = 10;
+    ctx.strokeRect(0, 0, WORLD_W, WORLD_H);
+}
+
+function drawPellets() {
+    const me = players.find(p => p.id === myId);
+    const cx = me ? me.center.x : cameraX;
+    const cy = me ? me.center.y : cameraY;
+    const viewDist = Math.max(W, H) / cameraScale;
+
+    pellets.forEach(p => {
+        if (Math.abs(p.x - cx) > viewDist || Math.abs(p.y - cy) > viewDist) return;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.sqrt(p.mass / Math.PI) * 6, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+    });
+}
+
+function drawEjects() {
+    ejects.forEach(e => {
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, Math.sqrt(e.mass / Math.PI) * 6, 0, Math.PI * 2);
+        ctx.fillStyle = e.color;
+        ctx.fill();
+    });
+}
+
+function drawViruses() {
+    viruses.forEach(v => {
+        ctx.beginPath();
+        const r = v.radius || Math.sqrt(v.mass / Math.PI) * 6;
+        for (let i = 0; i <= v.spikes * 2; i++) {
+            const angle = (i / (v.spikes * 2)) * Math.PI * 2;
+            const sr = i % 2 === 0 ? r * 1.15 : r * 0.85;
+            const px = v.x + Math.cos(angle) * sr;
+            const py = v.y + Math.sin(angle) * sr;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        const grad = ctx.createRadialGradient(v.x, v.y, 0, v.x, v.y, r);
+        grad.addColorStop(0, '#7ddf64');
+        grad.addColorStop(1, '#2d5a27');
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.strokeStyle = '#1a3d15';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    });
+}
+
+function drawCell(cell, name, isMe) {
+    const r = cell.radius;
+    ctx.beginPath();
+    ctx.arc(cell.x, cell.y, r, 0, Math.PI * 2);
+
+    const grad = ctx.createRadialGradient(cell.x - r * 0.3, cell.y - r * 0.3, 0, cell.x, cell.y, r);
+    grad.addColorStop(0, lighten(cell.color, 30));
+    grad.addColorStop(1, cell.color);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.strokeStyle = darken(cell.color, 40);
+    ctx.lineWidth = Math.max(2, r * 0.05);
+    ctx.stroke();
+
+    // Name
+    if (name) {
+        const fontSize = Math.max(12, Math.min(r * 0.5, 40));
+        ctx.font = `bold ${fontSize}px 'Microsoft YaHei',Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 3;
+        ctx.strokeText(name, cell.x, cell.y);
+        ctx.fillText(name, cell.x, cell.y);
+
+        if (isMe) {
+            const massText = `${Math.floor(cell.mass)}`;
+            const mfs = Math.max(10, fontSize * 0.6);
+            ctx.font = `${mfs}px Arial`;
+            ctx.strokeText(massText, cell.x, cell.y + fontSize * 0.8);
+            ctx.fillText(massText, cell.x, cell.y + fontSize * 0.8);
+        }
+    }
+}
+
+function drawPlayers() {
+    // Sort by mass for drawing order (small on top)
+    const allCells = [];
+    players.forEach(p => {
+        if (!p.alive) return;
+        p.cells.forEach(c => allCells.push({ cell: c, name: p.name, id: p.id, mass: p.totalMass }));
+    });
+    allCells.sort((a, b) => b.cell.mass - a.cell.mass);
+
+    allCells.forEach(item => {
+        drawCell(item.cell, item.name, item.id === myId);
+    });
+}
+
+function lighten(hex, pct) {
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+    r = Math.min(255, r + pct);
+    g = Math.min(255, g + pct);
+    b = Math.min(255, b + pct);
+    return `rgb(${r},${g},${b})`;
+}
+function darken(hex, pct) {
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+    r = Math.max(0, r - pct);
+    g = Math.max(0, g - pct);
+    b = Math.max(0, b - pct);
+    return `rgb(${r},${g},${b})`;
+}
+
+function updateHUD() {
+    const me = players.find(p => p.id === myId);
+    if (!me) return;
+    document.getElementById('massHud').textContent = `质量: ${Math.floor(me.totalMass)}`;
+
+    const sorted = players.filter(p => p.alive).sort((a, b) => b.totalMass - a.totalMass);
+    const rank = sorted.findIndex(p => p.id === myId) + 1;
+    document.getElementById('rankHud').textContent = `排名: ${rank}`;
+    document.getElementById('aliveHud').textContent = `存活: ${sorted.length}`;
+
+    // Leaderboard
+    const lbList = document.getElementById('lbList');
+    lbList.innerHTML = '';
+    sorted.slice(0, 10).forEach((p, i) => {
+        const div = document.createElement('div');
+        div.className = 'lbItem' + (p.id === myId ? ' me' : '');
+        div.innerHTML = `<span class="lbName">${i + 1}. ${p.name}</span><span>${Math.floor(p.totalMass)}</span>`;
+        lbList.appendChild(div);
+    });
+}
+
+function drawMinimap() {
+    mmCtx.fillStyle = 'rgba(0,0,0,0.7)';
+    mmCtx.fillRect(0, 0, 160, 160);
+
+    const sx = 160 / WORLD_W, sy = 160 / WORLD_H;
+
+    // Players
+    players.forEach(p => {
+        if (!p.alive) return;
+        const c = p.center;
+        const sz = Math.max(2, Math.sqrt(p.totalMass) * 0.15);
+        mmCtx.fillStyle = p.id === myId ? '#00ff88' : p.color;
+        mmCtx.beginPath();
+        mmCtx.arc(c.x * sx, c.y * sy, sz, 0, Math.PI * 2);
+        mmCtx.fill();
+    });
+
+    // View area
+    const me = players.find(p => p.id === myId);
+    if (me) {
+        mmCtx.strokeStyle = 'rgba(255,255,255,0.5)';
+        mmCtx.lineWidth = 1;
+        mmCtx.strokeRect(
+            (cameraX - W / 2 / cameraScale) * sx,
+            (cameraY - H / 2 / cameraScale) * sy,
+            (W / cameraScale) * sx,
+            (H / cameraScale) * sy
+        );
+    }
+}
+
+let lastTime = 0;
+function gameLoop(time) {
+    if (!gameRunning) return;
+    const dt = Math.min((time - lastTime) / 1000, 0.05);
+    lastTime = time;
+
+    updatePhysics(dt * 60);
+    updateCamera();
+
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(cameraScale, cameraScale);
+    ctx.translate(-cameraX, -cameraY);
+
+    drawGrid();
+    drawPellets();
+    drawEjects();
+    drawViruses();
+    drawPlayers();
+
+    ctx.restore();
+
+    updateHUD();
+    drawMinimap();
+
+    requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+    const name = document.getElementById('nameInput').value.trim() || '无名氏';
+    document.getElementById('startScreen').style.display = 'none';
+
+    initGame();
+    myId = 1;
+    const me = new Player(myId, name, selectedColor, false);
+    me.spawn();
+    players.push(me);
+
+    gameRunning = true;
+    lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
+}
+
+// Input
+canvas.addEventListener('mousemove', e => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    const dx = mouseX - W / 2;
+    const dy = mouseY - H / 2;
+    const len = Math.hypot(dx, dy);
+    if (len > 5) {
+        mouseDirX = dx / len;
+        mouseDirY = dy / len;
+    } else {
+        mouseDirX = 0;
+        mouseDirY = 0;
+    }
+});
+canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    mouseX = e.touches[0].clientX;
+    mouseY = e.touches[0].clientY;
+    const dx = mouseX - W / 2;
+    const dy = mouseY - H / 2;
+    const len = Math.hypot(dx, dy);
+    if (len > 5) {
+        mouseDirX = dx / len;
+        mouseDirY = dy / len;
+    } else {
+        mouseDirX = 0;
+        mouseDirY = 0;
+    }
+}, { passive: false });
+canvas.addEventListener('touchstart', e => {
+    mouseX = e.touches[0].clientX;
+    mouseY = e.touches[0].clientY;
+    const dx = mouseX - W / 2;
+    const dy = mouseY - H / 2;
+    const len = Math.hypot(dx, dy);
+    if (len > 5) {
+        mouseDirX = dx / len;
+        mouseDirY = dy / len;
+    } else {
+        mouseDirX = 0;
+        mouseDirY = 0;
+    }
+});
+
+document.addEventListener('keydown', e => {
+    if (!gameRunning) return;
+    const me = players.find(p => p.id === myId);
+    if (!me) return;
+    if (e.code === 'KeyW') doEject(me);
+    if (e.code === 'Space') { e.preventDefault(); doSplit(me); }
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') shiftDown = true;
+    if (e.code === 'KeyZ') zDown = true;
+});
+document.addEventListener('keyup', e => {
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') shiftDown = false;
+    if (e.code === 'KeyZ') zDown = false;
+});
+
+function mobileSplit() {
+    const me = players.find(p => p.id === myId);
+    if (me) doSplit(me);
+}
+function mobileEject() {
+    const me = players.find(p => p.id === myId);
+    if (me) doEject(me);
+}
+
+document.getElementById('nameInput').addEventListener('keydown', e => {
+    if (e.code === 'Enter') startGame();
+});
+
+// Continuous eject with W held
+setInterval(() => {
+    if (!gameRunning) return;
+    if (document.querySelector(':active') && zDown) {
+        const me = players.find(p => p.id === myId);
+        if (me) doEject(me);
+    }
+}, 80);
+</script>
+</body>
+</html>

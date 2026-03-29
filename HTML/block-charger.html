@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>俄罗斯方块充电器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f0f1a;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Arial',sans-serif;color:#fff}
+.title{font-size:28px;margin-bottom:20px;color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,0.5)}
+.battery{background:#1a1a2e;border:4px solid #444;border-radius:12px;padding:6px;position:relative;width:260px;height:400px}
+.battery::after{content:'';position:absolute;top:-12px;left:50%;transform:translateX(-50%);width:50px;height:12px;background:#444;border-radius:6px 6px 0 0}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);grid-template-rows:repeat(16,1fr);gap:2px;width:100%;height:100%}
+.cell{background:rgba(255,255,255,0.05);border-radius:2px;transition:background 0.1s,box-shadow 0.1s}
+.cell.filled{border-radius:1px;box-shadow:inset 0 0 5px rgba(255,255,255,0.3),0 0 8px var(--glow)}
+.controls{margin-top:30px;display:flex;gap:15px;flex-wrap:wrap;justify-content:center}
+.btn{padding:12px 28px;font-size:16px;border:2px solid;border-radius:8px;cursor:pointer;background:transparent;color:#fff;transition:all 0.2s}
+.btn:active{transform:scale(0.95)}
+.btn-start{border-color:#4CAF50}
+.btn-start:hover{background:#4CAF50}
+.btn-stop{border-color:#f44336}
+.btn-stop:hover{background:#f44336}
+.btn-reset{border-color:#666}
+.btn-reset:hover{background:#444}
+.stats{margin-top:20px;display:flex;gap:25px;font-size:14px;color:#888}
+.stat{display:flex;align-items:center;gap:5px}
+.dot{width:8px;height:8px;border-radius:50%;background:#444}
+.dot.charging{background:#4CAF50;animation:pulse 1s infinite}
+.dot.idle{background:#f44336}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.speed-control{margin-top:15px;display:flex;align-items:center;gap:10px;font-size:14px;color:#888}
+input[type=range]{width:150px;accent-color:#ffd700}
+</style>
+</head>
+<body>
+<div class="title">🔋 俄罗斯方块充电器</div>
+<div class="battery">
+    <div class="grid" id="grid"></div>
+</div>
+<div class="stats">
+    <div class="stat"><div class="dot" id="statusDot"></div><span id="status">等待中</span></div>
+    <div class="stat">⚡ <span id="level">0</span>%</div>
+    <div class="stat">⏱ <span id="time">0:00</span></div>
+</div>
+<div class="speed-control">
+    <span>慢</span>
+    <input type="range" id="speed" min="30" max="200" value="100">
+    <span>快</span>
+</div>
+<div class="controls">
+    <button class="btn btn-start" onclick="startCharge()">开始充电</button>
+    <button class="btn btn-stop" onclick="stopCharge()">暂停</button>
+    <button class="btn btn-reset" onclick="resetCharge()">重置</button>
+</div>
+
+<script>
+var COLS=12,ROWS=16;
+var cells=[];
+var level=0; // 0-100
+var charging=false;
+var interval=null;
+var startTime=0;
+var elapsed=0;
+
+// 初始化网格
+function initGrid(){
+    var g=document.getElementById('grid');
+    g.innerHTML='';
+    cells=[];
+    for(var r=0;r<ROWS;r++){
+        for(var c=0;c<COLS;c++){
+            var cell=document.createElement('div');
+            cell.className='cell';
+            cell.dataset.row=r;
+            cell.dataset.col=c;
+            g.appendChild(cell);
+            cells.push(cell);
+        }
+    }
+}
+
+// 根据百分比获取颜色 (红 -> 黄 -> 绿)
+function getColor(pct){
+    var r,g,b;
+    if(pct<=50){
+        // 红 -> 黄
+        r=255;
+        g=Math.round(pct*2*255/100);
+        b=0;
+    }else{
+        // 黄 -> 绿
+        r=Math.round((100-pct)*2*255/100);
+        g=255;
+        b=0;
+    }
+    return 'rgb('+r+','+g+','+b+')';
+}
+
+// 更新显示
+function updateDisplay(){
+    // 计算需要填充的行数 (从底部开始)
+    var targetRows=Math.floor(level*ROWS/100);
+    var partialRow=(level*ROWS/100)-targetRows;
+    
+    for(var r=0;r<ROWS;r++){
+        for(var c=0;c<COLS;c++){
+            var idx=(ROWS-1-r)*COLS+c;
+            var cell=cells[idx];
+            
+            if(r<targetRows){
+                // 完全填充的行 - 底部红，顶部绿
+                var pct=targetRows>1?(r/(targetRows-1))*100:100;
+                var color=getColor(pct);
+                cell.style.background=color;
+                cell.style.setProperty('--glow',color);
+                cell.classList.add('filled');
+            }else if(r===targetRows&&partialRow>0){
+                // 部分填充的行 (俄罗斯方块掉落效果)
+                if(c<Math.floor(partialRow*COLS)){
+                    var pct=targetRows>0?((targetRows)/(targetRows+1))*100:0;
+                    var color=getColor(pct);
+                    cell.style.background=color;
+                    cell.style.setProperty('--glow',color);
+                    cell.classList.add('filled');
+                }else{
+                    cell.style.background='rgba(255,255,255,0.05)';
+                    cell.style.boxShadow='none';
+                    cell.classList.remove('filled');
+                }
+            }else{
+                cell.style.background='rgba(255,255,255,0.05)';
+                cell.style.boxShadow='none';
+                cell.classList.remove('filled');
+            }
+        }
+    }
+    
+    // 更新百分比
+    document.getElementById('level').textContent=Math.round(level);
+}
+
+// 更新时间显示
+function updateTime(){
+    if(!charging)return;
+    var now=Date.now();
+    var total=Math.floor((elapsed+now-startTime)/1000);
+    var min=Math.floor(total/60);
+    var sec=total%60;
+    document.getElementById('time').textContent=min+':'+(sec<10?'0':'')+sec;
+}
+
+// 充电动画
+function chargeStep(){
+    if(level>=100){
+        stopCharge();
+        document.getElementById('status').textContent='充满！🎉';
+        document.getElementById('statusDot').className='dot';
+        return;
+    }
+    
+    level+=0.5;
+    if(level>100)level=100;
+    
+    updateDisplay();
+    updateTime();
+}
+
+// 开始充电
+function startCharge(){
+    if(charging)return;
+    if(level>=100){
+        level=0;
+        updateDisplay();
+        document.getElementById('time').textContent='0:00';
+        elapsed=0;
+    }
+    
+    charging=true;
+    startTime=Date.now();
+    document.getElementById('status').textContent='充电中...';
+    document.getElementById('statusDot').className='dot charging';
+    
+    var speed=document.getElementById('speed').value;
+    interval=setInterval(chargeStep, 200-speed);
+}
+
+// 停止充电
+function stopCharge(){
+    if(!charging)return;
+    charging=false;
+    clearInterval(interval);
+    if(level>=100){
+        document.getElementById('status').textContent='充满！🎉';
+    }else{
+        document.getElementById('status').textContent='已暂停';
+    }
+    document.getElementById('statusDot').className='dot idle';
+    elapsed+=Date.now()-startTime;
+}
+
+// 重置
+function resetCharge(){
+    stopCharge();
+    level=0;
+    elapsed=0;
+    startTime=0;
+    updateDisplay();
+    document.getElementById('status').textContent='等待中';
+    document.getElementById('statusDot').className='dot idle';
+    document.getElementById('time').textContent='0:00';
+}
+
+// 速度滑块
+document.getElementById('speed').addEventListener('input',function(){
+    if(charging){
+        clearInterval(interval);
+        interval=setInterval(chargeStep, 200-this.value);
+    }
+});
+
+// 初始化
+initGrid();
+updateDisplay();
+</script>
+</body>
+</html>

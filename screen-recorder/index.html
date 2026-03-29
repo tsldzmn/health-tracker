@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>屏幕录制工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            color: #fff;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1200px;
+        }
+
+        .preview-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .preview-panel h2 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #00d4ff;
+        }
+
+        #preview {
+            width: 640px;
+            height: 360px;
+            background: #000;
+            border-radius: 12px;
+            object-fit: contain;
+        }
+
+        .controls-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            min-width: 300px;
+        }
+
+        .controls-panel h2 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #00d4ff;
+        }
+
+        .setting-group {
+            margin-bottom: 25px;
+        }
+
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: #000;
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #ff4757, #ff3838);
+            color: #fff;
+        }
+
+        .btn-stop:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255, 71, 87, 0.3);
+        }
+
+        .btn-stop:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-start:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status.idle {
+            background: rgba(255, 255, 255, 0.05);
+            color: #888;
+        }
+
+        .status.recording {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status.paused {
+            background: rgba(255, 165, 0, 0.2);
+            color: #ffa500;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .timer {
+            font-size: 2rem;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            margin: 20px 0;
+            color: #00d4ff;
+        }
+
+        .recordings {
+            margin-top: 40px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .recordings h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #00d4ff;
+        }
+
+        .recording-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .recording-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .recording-item video {
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .recording-item .info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .recording-item .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .recording-item .actions button {
+            flex: 1;
+            padding: 8px;
+            font-size: 0.85rem;
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #2ed573, #17c964);
+            color: #000;
+        }
+
+        .btn-delete {
+            background: rgba(255, 71, 87, 0.3);
+            color: #ff4757;
+            border: 1px solid rgba(255, 71, 87, 0.5);
+        }
+
+        .btn-pause {
+            background: linear-gradient(135deg, #ffa502, #ff6348);
+            color: #000;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            #preview {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 16/9;
+            }
+
+            .controls-panel {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>屏幕录制工具</h1>
+
+    <div class="container">
+        <div class="preview-panel">
+            <h2>预览</h2>
+            <video id="preview" autoplay muted></video>
+        </div>
+
+        <div class="controls-panel">
+            <h2>录制设置</h2>
+
+            <div class="setting-group">
+                <label>视频质量</label>
+                <select id="videoQuality">
+                    <option value="1080">1080p (Full HD)</option>
+                    <option value="720" selected>720p (HD)</option>
+                    <option value="480">480p (SD)</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label>帧率 (FPS)</label>
+                <select id="frameRate">
+                    <option value="60">60 FPS</option>
+                    <option value="30" selected>30 FPS</option>
+                    <option value="24">24 FPS</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label>视频格式</label>
+                <select id="videoFormat">
+                    <option value="webm">WebM</option>
+                    <option value="mp4">MP4 (如支持)</option>
+                </select>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="includeAudio" checked>
+                <label for="includeAudio">录制系统音频</label>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="includeMic">
+                <label for="includeMic">录制麦克风</label>
+            </div>
+
+            <div class="timer" id="timer">00:00:00</div>
+
+            <div class="status idle" id="status">准备就绪</div>
+
+            <div class="btn-group">
+                <button class="btn-start" id="startBtn" onclick="startRecording()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                    开始录制
+                </button>
+                <button class="btn-stop" id="stopBtn" onclick="stopRecording()" disabled>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="6" width="12" height="12" rx="2"/>
+                    </svg>
+                    停止
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="recordings">
+        <h2>录制历史</h2>
+        <div class="recording-list" id="recordingList">
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                </svg>
+                <p>还没有录制内容</p>
+                <p>点击"开始录制"开始您的第一次录屏</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let stream = null;
+        let timerInterval = null;
+        let startTime = 0;
+        let recordings = [];
+        let isPaused = false;
+
+        const preview = document.getElementById('preview');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+        const timer = document.getElementById('timer');
+        const recordingList = document.getElementById('recordingList');
+
+        async function startRecording() {
+            try {
+                const quality = document.getElementById('videoQuality').value;
+                const frameRate = parseInt(document.getElementById('frameRate').value);
+                const includeAudio = document.getElementById('includeAudio').checked;
+                const includeMic = document.getElementById('includeMic').checked;
+
+                const displayMediaOptions = {
+                    video: {
+                        width: { ideal: parseInt(quality) * 16 / 9 },
+                        height: { ideal: parseInt(quality) },
+                        frameRate: { ideal: frameRate }
+                    },
+                    audio: includeAudio
+                };
+
+                stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
+
+                if (includeMic) {
+                    try {
+                        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        audioStream.getAudioTracks().forEach(track => {
+                            stream.addTrack(track);
+                        });
+                    } catch (err) {
+                        console.warn('无法获取麦克风:', err);
+                    }
+                }
+
+                preview.srcObject = stream;
+
+                stream.getVideoTracks()[0].addEventListener('ended', () => {
+                    stopRecording();
+                });
+
+                const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+                    ? 'video/webm;codecs=vp9'
+                    : 'video/webm';
+
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: mimeType,
+                    videoBitsPerSecond: quality === '1080' ? 5000000 : quality === '720' ? 2500000 : 1000000
+                });
+
+                recordedChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    saveRecording();
+                };
+
+                mediaRecorder.start(1000);
+
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                status.className = 'status recording';
+                status.textContent = '正在录制...';
+
+                startTime = Date.now();
+                timerInterval = setInterval(updateTimer, 1000);
+
+            } catch (err) {
+                console.error('录制失败:', err);
+                status.className = 'status idle';
+                status.textContent = '录制失败: ' + err.message;
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+
+            preview.srcObject = null;
+
+            clearInterval(timerInterval);
+
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            status.className = 'status idle';
+            status.textContent = '录制完成';
+
+            setTimeout(() => {
+                status.textContent = '准备就绪';
+            }, 2000);
+        }
+
+        function updateTimer() {
+            const elapsed = Date.now() - startTime;
+            const hours = Math.floor(elapsed / 3600000);
+            const minutes = Math.floor((elapsed % 3600000) / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+
+            timer.textContent = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+        }
+
+        function pad(num) {
+            return num.toString().padStart(2, '0');
+        }
+
+        function saveRecording() {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const timestamp = new Date().toLocaleString('zh-CN');
+            const duration = timer.textContent;
+
+            const recording = {
+                id: Date.now(),
+                url: url,
+                blob: blob,
+                timestamp: timestamp,
+                duration: duration
+            };
+
+            recordings.unshift(recording);
+            renderRecordings();
+        }
+
+        function renderRecordings() {
+            if (recordings.length === 0) {
+                recordingList.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                        </svg>
+                        <p>还没有录制内容</p>
+                        <p>点击"开始录制"开始您的第一次录屏</p>
+                    </div>
+                `;
+                return;
+            }
+
+            recordingList.innerHTML = recordings.map(rec => `
+                <div class="recording-item" data-id="${rec.id}">
+                    <video src="${rec.url}" controls></video>
+                    <div class="info">
+                        <span>${rec.timestamp}</span>
+                        <span>时长: ${rec.duration}</span>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-download" onclick="downloadRecording(${rec.id})">
+                            下载
+                        </button>
+                        <button class="btn-delete" onclick="deleteRecording(${rec.id})">
+                            删除
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function downloadRecording(id) {
+            const recording = recordings.find(r => r.id === id);
+            if (recording) {
+                const a = document.createElement('a');
+                a.href = recording.url;
+                a.download = `录屏_${recording.timestamp.replace(/[/:]/g, '-')}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        }
+
+        function deleteRecording(id) {
+            const index = recordings.findIndex(r => r.id === id);
+            if (index > -1) {
+                URL.revokeObjectURL(recordings[index].url);
+                recordings.splice(index, 1);
+                renderRecordings();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                status.textContent = '您的浏览器不支持屏幕录制';
+                startBtn.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>

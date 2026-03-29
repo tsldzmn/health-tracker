@@ -1,0 +1,13 @@
+{
+  "name": "health-tracker",
+  "version": "1.0.0",
+  "description": "健康追踪 - 饮食管理助手",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd backend && node server.js",
+    "dev": "cd backend && node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>植物大战僵尸</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;overflow:hidden;font-family:'Microsoft YaHei',Arial,sans-serif;user-select:none}
+canvas{display:block;cursor:crosshair}
+#start{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(180deg,#2d5016,#1a3a0a);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#start h1{font-size:52px;color:#ffd700;text-shadow:3px 3px 0 #228b22,6px 6px 0 #006400;margin-bottom:10px}
+.sub{color:#90ee90;font-size:16px;margin-bottom:20px}
+.plants{display:flex;gap:15px;margin-bottom:25px;flex-wrap:wrap;justify-content:center}
+.pc{background:rgba(0,0,0,0.4);border-radius:10px;padding:10px;text-align:center;width:90px;border:2px solid #32cd32}
+.pc .e{font-size:36px;margin-bottom:3px}
+.pc .n{color:#fff;font-size:11px}
+#go{padding:15px 50px;font-size:24px;background:#ffd700;color:#228b22;border:none;border-radius:30px;cursor:pointer;font-weight:bold;box-shadow:0 4px 15px rgba(0,0,0,0.3)}
+#go:hover{background:#ffec8b;transform:scale(1.05)}
+.tip{color:#98fb98;font-size:12px;margin-top:15px;text-align:center;line-height:2}
+#hud{position:fixed;top:5px;left:50%;transform:translateX(-50%);z-index:10;display:none;background:rgba(0,0,0,0.7);padding:8px 20px;border-radius:15px;border:2px solid #32cd32}
+#sun-count{color:#ffd700;font-size:20px;font-weight:bold}
+#wave-info{color:#fff;font-size:14px;margin-left:20px}
+#deck{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);z-index:10;display:none;gap:8px}
+.card{width:65px;height:80px;background:linear-gradient(180deg,#4a7c23,#2d5016);border:2px solid #32cd32;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all 0.2s}
+.card:hover{transform:scale(1.1);border-color:#ffd700}
+.card.selected{border-color:#ffd700;box-shadow:0 0 10px #ffd700}
+.card.disabled{opacity:0.5;cursor:not-allowed}
+.card .emoji{font-size:28px}
+.card .cost{color:#ffd700;font-size:11px;font-weight:bold}
+.card .name{color:#fff;font-size:9px}
+#gameOver{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:50}
+#gameOver h2{color:#ff4444;font-size:42px;margin-bottom:15px}
+#gameOver .fs{color:#fff;font-size:24px;margin-bottom:20px}
+#gameOver button{padding:12px 40px;font-size:18px;background:#32cd32;color:#fff;border:none;border-radius:25px;cursor:pointer;font-weight:bold}
+#winScreen{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:50}
+#winScreen h2{color:#ffd700;font-size:42px;margin-bottom:15px}
+#winScreen .fs{color:#fff;font-size:24px;margin-bottom:20px}
+#winScreen button{padding:12px 40px;font-size:18px;background:#32cd32;color:#fff;border:none;border-radius:25px;cursor:pointer;font-weight:bold}
+#shovel{position:fixed;bottom:100px;right:20px;z-index:10;display:none;width:60px;height:60px;background:linear-gradient(180deg,#8b4513,#654321);border:2px solid #ffd700;border-radius:10px;cursor:pointer;font-size:32px;display:flex;align-items:center;justify-content:center}
+#shovel.active{border-color:#ff4444;box-shadow:0 0 10px #ff4444}
+</style>
+</head>
+<body>
+<div id="start">
+    <h1>🌻 植物大战僵尸 🧟</h1>
+    <div class="sub">经典塔防 - 守护你的家园！</div>
+    <div class="plants">
+        <div class="pc"><div class="e">🌻</div><div class="n">向日葵<br>50阳光</div></div>
+        <div class="pc"><div class="e">🫛</div><div class="n">豌豆射手<br>100阳光</div></div>
+        <div class="pc"><div class="e">🧊</div><div class="n">寒冰射手<br>175阳光</div></div>
+        <div class="pc"><div class="e">🥜</div><div class="n">坚果墙<br>50阳光</div></div>
+        <div class="pc"><div class="e">💣</div><div class="n">樱桃炸弹<br>150阳光</div></div>
+        <div class="pc"><div class="e">🥔</div><div class="n">土豆雷<br>25阳光</div></div>
+    </div>
+    <button id="go">开始游戏！</button>
+    <div class="tip">💡 收集阳光，种植植物，阻止僵尸入侵！<br>点击植物卡片选择，点击草坪种植<br>铲子可以移除已种植的植物</div>
+</div>
+<canvas id="C"></canvas>
+<div id="hud"><span id="sun-count">☀️ 50</span><span id="wave-info">第 1 波 / 10</span></div>
+<div id="deck">
+    <div class="card" data-type="sunflower" data-cost="50"><div class="emoji">🌻</div><div class="cost">50</div><div class="name">向日葵</div></div>
+    <div class="card" data-type="peashooter" data-cost="100"><div class="emoji">🫛</div><div class="cost">100</div><div class="name">豌豆射手</div></div>
+    <div class="card" data-type="snowpea" data-cost="175"><div class="emoji">🧊</div><div class="cost">175</div><div class="name">寒冰射手</div></div>
+    <div class="card" data-type="wallnut" data-cost="50"><div class="emoji">🥜</div><div class="cost">50</div><div class="name">坚果墙</div></div>
+    <div class="card" data-type="cherrybomb" data-cost="150"><div class="emoji">💣</div><div class="cost">150</div><div class="name">樱桃炸弹</div></div>
+    <div class="card" data-type="potatomine" data-cost="25"><div class="emoji">🥔</div><div class="cost">25</div><div class="name">土豆雷</div></div>
+</div>
+<div id="shovel">🔧</div>
+<div id="gameOver"><h2>🧟 僵尸入侵了！</h2><div class="fs" id="fs"></div><button id="rbt">再来一局</button></div>
+<div id="winScreen"><h2>🎉 胜利！</h2><div class="fs" id="ws"></div><button id="wbt">再玩一次</button></div>
+
+<script>
+var C=document.getElementById('C'),X=C.getContext('2d');
+var W,H;
+function resize(){W=C.width=innerWidth;H=C.height=innerHeight;}
+resize();addEventListener('resize',resize);
+
+// 游戏常量
+var ROWS=5,COLS=9;
+var GRID_W,GRID_H,GRID_OFFSET_X,GRID_OFFSET_Y;
+function calcGrid(){
+    var lawnW=W*0.75,lawnH=H*0.7;
+    GRID_W=Math.floor(lawnW/COLS);
+    GRID_H=Math.floor(lawnH/ROWS);
+    GRID_OFFSET_X=Math.floor((W-lawnW)/2)+GRID_W/2;
+    GRID_OFFSET_Y=Math.floor((H-lawnH)/2)+GRID_H/2;
+}
+
+// 植物配置
+var PLANTS={
+    sunflower:{name:'向日葵',emoji:'🌻',cost:50,hp:100,sunProd:true,prodTime:600},
+    peashooter:{name:'豌豆射手',emoji:'🫛',cost:100,hp:100,shoot:true,shootRate:90,Damage:20},
+    snowpea:{name:'寒冰射手',emoji:'🧊',cost:175,hp:100,shoot:true,shootRate:90,Damage:20,slow:true},
+    wallnut:{name:'坚果墙',emoji:'🥜',cost:50,hp:400},
+    cherrybomb:{name:'樱桃炸弹',emoji:'💣',cost:150,hp:100,bomb:true},
+    potatomine:{name:'土豆雷',emoji:'🥔',cost:25,hp:100,mine:true,armTime:900}
+};
+
+// 僵尸配置
+var ZOMBIES={
+    normal:{name:'普通僵尸',hp:100,speed:0.3,damage:20,eatRate:30},
+    cone:{name:'路障僵尸',hp:200,speed:0.3,damage:20,eatRate:30},
+    bucket:{name:'铁桶僵尸',hp:400,speed:0.25,damage:25,eatRate:25},
+    flag:{name:'旗帜僵尸',hp:120,speed:0.5,damage:20,eatRate:30}
+};
+
+// 游戏状态
+var on=false,sun=50,wave=0,maxWave=10,gameTime=0;
+var plants=[],zombies=[],bullets=[],suns=[],explosions=[];
+var selectedPlant=null,shovelMode=false;
+
+// 输入
+var mouseX=0,mouseY=0;
+C.addEventListener('mousemove',function(e){mouseX=e.clientX;mouseY=e.clientY;});
+C.addEventListener('click',handleClick);
+
+// 卡片选择
+document.querySelectorAll('.card').forEach(function(card){
+    card.addEventListener('click',function(){
+        shovelMode=false;
+        document.getElementById('shovel').classList.remove('active');
+        var type=this.dataset.type;
+        var cost=parseInt(this.dataset.cost);
+        if(sun>=cost){
+            document.querySelectorAll('.card').forEach(c=>c.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedPlant=type;
+        }
+    });
+});
+
+document.getElementById('shovel').addEventListener('click',function(){
+    selectedPlant=null;
+    document.querySelectorAll('.card').forEach(c=>c.classList.remove('selected'));
+    shovelMode=!shovelMode;
+    this.classList.toggle('active',shovelMode);
+});
+
+function handleClick(e){
+    if(!on)return;
+    var col=Math.floor((e.clientX-GRID_OFFSET_X)/GRID_W);
+    var row=Math.floor((e.clientY-GRID_OFFSET_Y)/GRID_H);
+    if(col<0||col>=COLS||row<0||row>=ROWS)return;
+    
+    if(shovelMode){
+        var idx=plants.findIndex(function(p){return p.col===col&&p.row===row;});
+        if(idx>=0){
+            plants.splice(idx,1);
+            shovelMode=false;
+            document.getElementById('shovel').classList.remove('active');
+        }
+        return;
+    }
+    
+    if(selectedPlant){
+        var pDef=PLANTS[selectedPlant];
+        if(sun>=pDef.cost){
+            var exists=plants.some(function(p){return p.col===col&&p.row===row;});
+            if(!exists){
+                sun-=pDef.cost;
+                var newP={
+                    type:selectedPlant,
+                    row:row,col:col,
+                    hp:pDef.hp,maxHp:pDef.hp,
+                    timer:0,armed:!pDef.mine,anim:0
+                };
+                plants.push(newP);
+                if(pDef.bomb){
+                    explodePlant(newP);
+                }
+                selectedPlant=null;  // 放置后取消选中
+                document.querySelectorAll('.card').forEach(c=>c.classList.remove('selected'));
+                updateHUD();
+            }
+        }
+    }
+}
+
+function explodePlant(plant){
+    explosions.push({x:GRID_OFFSET_X+plant.col*GRID_W+GRID_W/2,y:GRID_OFFSET_Y+plant.row*GRID_H+GRID_H/2,radius:1,life:30});
+    zombies.forEach(function(z){
+        var zRow=Math.floor((z.y-GRID_OFFSET_Y)/GRID_H);
+        if(zRow===plant.row&&Math.abs(z.x-(GRID_OFFSET_X+plant.col*GRID_W))<GRID_W*1.5){
+            z.hp-=1800;
+        }
+    });
+    var idx=plants.indexOf(plant);
+    if(idx>=0)plants.splice(idx,1);
+}
+
+// 阳光系统
+function spawnSun(x,y,fromSky){
+    suns.push({x:x,y:y,vy:fromSky?0.8:0,targetY:y+100,life:600,fromSky:fromSky});
+}
+
+function collectSun(s){
+    sun+=25;
+    s.life=0;
+    updateHUD();
+}
+
+// 子弹系统
+function spawnBullet(plant){
+    var pDef=PLANTS[plant.type];
+    bullets.push({
+        x:GRID_OFFSET_X+plant.col*GRID_W+GRID_W*0.7,
+        y:GRID_OFFSET_Y+plant.row*GRID_H+GRID_H*0.5,
+        row:plant.row,
+        speed:5,
+        damage:pDef.Damage,
+        slow:!!pDef.slow,
+        ice:!!pDef.slow
+    });
+}
+
+// 僵尸生成
+function spawnZombie(type,row){
+    var zDef=ZOMBIES[type];
+    zombies.push({
+        type:type,
+        x:W+50,
+        y:GRID_OFFSET_Y+row*GRID_H+GRID_H*0.5,
+        row:row,
+        hp:zDef.hp,
+        maxHp:zDef.hp,
+        speed:zDef.speed,
+        damage:zDef.damage,
+        eatRate:zDef.eatRate,
+        eating:null,
+        slowTimer:0,
+        anim:Math.random()*100
+    });
+}
+
+// 波次系统
+var waveTimer=0,waveDelay=900,zombiesToSpawn=[];
+function startWave(){
+    wave++;
+    if(wave>maxWave)return;
+    updateHUD();
+    zombiesToSpawn=[];
+    var count=3+wave*2;
+    var types=['normal'];
+    if(wave>=3)types.push('cone');
+    if(wave>=5)types.push('bucket');
+    if(wave%5===0)types.push('flag');
+    
+    for(var i=0;i<count;i++){
+        zombiesToSpawn.push({
+            type:types[Math.floor(Math.random()*types.length)],
+            row:Math.floor(Math.random()*ROWS),
+            delay:i*60+Math.random()*60
+        });
+    }
+    waveTimer=0;
+}
+
+// 更新
+function update(){
+    gameTime++;
+    
+    // 波次管理
+    if(zombiesToSpawn.length===0&&zombies.length===0){
+        if(wave>=maxWave){
+            gameWin();
+            return;
+        }
+        waveDelay=Math.max(400,900-wave*40);
+        if(waveTimer>=waveDelay){
+            startWave();
+        }else{
+            waveTimer++;
+        }
+    }
+    
+    // 生成僵尸
+    for(var i=zombiesToSpawn.length-1;i>=0;i--){
+        zombiesToSpawn[i].delay--;
+        if(zombiesToSpawn[i].delay<=0){
+            var z=zombiesToSpawn[i];
+            spawnZombie(z.type,z.row);
+            zombiesToSpawn.splice(i,1);
+        }
+    }
+    
+    // 天空阳光
+    if(gameTime%360===0){
+        spawnSun(GRID_OFFSET_X+Math.random()*GRID_W*COLS,GRID_OFFSET_Y-50,true);
+    }
+    
+    // 向日葵产阳光
+    plants.forEach(function(p){
+        var pDef=PLANTS[p.type];
+        if(pDef.sunProd){
+            p.timer++;
+            if(p.timer>=pDef.prodTime){
+                p.timer=0;
+                spawnSun(GRID_OFFSET_X+p.col*GRID_W+GRID_W/2,GRID_OFFSET_Y+p.row*GRID_H+GRID_H*0.5,false);
+            }
+        }
+        // 豌豆射手射击
+        if(pDef.shoot){
+            var hasZombie=zombies.some(function(z){return z.row===p.row&&z.x>GRID_OFFSET_X+p.col*GRID_W;});
+            if(hasZombie){
+                p.timer++;
+                if(p.timer>=pDef.shootRate){
+                    p.timer=0;
+                    spawnBullet(p);
+                }
+            }
+        }
+        // 土豆雷准备
+        if(pDef.mine&&!p.armed){
+            p.timer++;
+            if(p.timer>=pDef.armTime){
+                p.armed=true;
+            }
+        }
+        p.anim+=0.1;
+    });
+    
+    // 更新子弹
+    for(var i=bullets.length-1;i>=0;i--){
+        var b=bullets[i];
+        b.x+=b.speed;
+        if(b.x>W+50){bullets.splice(i,1);continue;}
+        
+        // 碰撞检测
+        for(var j=0;j<zombies.length;j++){
+            var z=zombies[j];
+            if(z.row===b.row&&Math.abs(z.x-b.x)<25){
+                z.hp-=b.damage;
+                if(b.slow)z.slowTimer=180;
+                bullets.splice(i,1);
+                break;
+            }
+        }
+    }
+    
+    // 更新阳光
+    for(var i=suns.length-1;i>=0;i--){
+        var s=suns[i];
+        if(s.fromSky&&s.y<s.targetY)s.y+=s.vy;
+        s.life--;
+        if(s.life<=0)suns.splice(i,1);
+    }
+    
+    // 更新僵尸
+    for(var i=zombies.length-1;i>=0;i--){
+        var z=zombies[i];
+        z.anim+=0.15;
+        
+        if(z.hp<=0){zombies.splice(i,1);continue;}
+        
+        var speed=z.speed*(z.slowTimer>0?0.4:1);
+        if(z.slowTimer>0)z.slowTimer--;
+        
+        // 查找目标
+        var target=null;
+        plants.forEach(function(p){
+            var pX=GRID_OFFSET_X+p.col*GRID_W+GRID_W/2;
+            if(p.row===z.row&&pX<z.x&&pX>z.x-60){
+                if(!target||pX>target.x)target={plant:p,x:pX};
+            }
+        });
+        
+        if(target){
+            z.eating=target.plant;
+            z.eatTimer=(z.eatTimer||0)+1;
+            if(z.eatTimer>=z.eatRate){
+                z.eatTimer=0;
+                target.plant.hp-=z.damage;
+                
+                // 土豆雷爆炸
+                if(PLANTS[target.plant.type].mine&&target.plant.armed){
+                    explodePlant(target.plant);
+                }
+                
+                if(target.plant.hp<=0){
+                    var idx=plants.indexOf(target.plant);
+                    if(idx>=0)plants.splice(idx,1);
+                    z.eating=null;
+                }
+            }
+        }else{
+            z.eating=null;
+            z.x-=speed;
+        }
+        
+        // 僵尸到达左边
+        if(z.x<GRID_OFFSET_X-30){
+            gameOver();
+            return;
+        }
+    }
+    
+    // 更新爆炸
+    for(var i=explosions.length-1;i>=0;i--){
+        explosions[i].radius+=8;
+        explosions[i].life--;
+        if(explosions[i].life<=0)explosions.splice(i,1);
+    }
+}
+
+// 绘制
+function draw(){
+    calcGrid();
+    X.fillStyle='#4a7c23';
+    X.fillRect(0,0,W,H);
+    
+    // 草坪
+    for(var r=0;r<ROWS;r++){
+        for(var c=0;c<COLS;c++){
+            var x=GRID_OFFSET_X+c*GRID_W;
+            var y=GRID_OFFSET_Y+r*GRID_H;
+            X.fillStyle=(r+c)%2===0?'#5a9c33':'#4a8c23';
+            X.fillRect(x,y,GRID_W,GRID_H);
+            X.strokeStyle='rgba(0,0,0,0.1)';
+            X.strokeRect(x,y,GRID_W,GRID_H);
+        }
+    }
+    
+    // 家
+    X.fillStyle='#8b4513';
+    X.fillRect(GRID_OFFSET_X-80,GRID_OFFSET_Y-20,70,GRID_H*ROWS+40);
+    X.fillStyle='#654321';
+    X.fillRect(GRID_OFFSET_X-75,GRID_OFFSET_Y-10,60,GRID_H*ROWS+20);
+    X.fillStyle='#000';
+    X.font='40px Arial';X.textAlign='center';
+    X.fillText('🏠',GRID_OFFSET_X-45,GRID_OFFSET_Y+GRID_H*ROWS/2+15);
+    
+    // 绘制植物
+    plants.forEach(function(p){
+        var x=GRID_OFFSET_X+p.col*GRID_W+GRID_W/2;
+        var y=GRID_OFFSET_Y+p.row*GRID_H+GRID_H/2;
+        var pDef=PLANTS[p.type];
+        var bob=Math.sin(p.anim)*3;
+        
+        // 阴影
+        X.fillStyle='rgba(0,0,0,0.2)';
+        X.beginPath();X.ellipse(x,y+GRID_H*0.3,GRID_W*0.3,GRID_H*0.15,0,0,Math.PI*2);X.fill();
+        
+        // 植物
+        X.fillStyle='#000';  // 重置颜色
+        X.font=(GRID_H*0.6)+'px Arial';X.textAlign='center';X.textBaseline='middle';
+        
+        // 土豆雷未准备状态
+        if(pDef.mine&&!p.armed){
+            X.globalAlpha=0.5;
+        }
+        X.fillText(pDef.emoji,x,y+bob);
+        X.globalAlpha=1;
+        
+        // 血条
+        if(p.hp<p.maxHp){
+            var barW=GRID_W*0.6;
+            X.fillStyle='#333';X.fillRect(x-barW/2,y+GRID_H*0.35,barW,4);
+            X.fillStyle=p.hp>p.maxHp*0.5?'#4CAF50':(p.hp>p.maxHp*0.25?'#FFC107':'#F44336');
+            X.fillRect(x-barW/2,y+GRID_H*0.35,barW*(p.hp/p.maxHp),4);
+        }
+    });
+    
+    // 绘制僵尸
+    zombies.forEach(function(z){
+        var zDef=ZOMBIES[z.type];
+        var bob=Math.sin(z.anim)*2;
+        
+        // 阴影
+        X.fillStyle='rgba(0,0,0,0.3)';
+        X.beginPath();X.ellipse(z.x,z.y+GRID_H*0.35,18,8,0,0,Math.PI*2);X.fill();
+        
+        // 僵尸emoji
+        var emoji='🧟';
+        if(z.type==='cone')emoji='🧟‍♂️';
+        if(z.type==='bucket')emoji='🧟‍♀️';
+        if(z.type==='flag')emoji='🏴';
+        
+        X.fillStyle='#000';  // 重置颜色
+        X.font='40px Arial';X.textAlign='center';X.textBaseline='middle';
+        if(z.slowTimer>0){X.fillStyle='rgba(136,204,255,0.3)';X.beginPath();X.arc(z.x,z.y+bob,22,0,Math.PI*2);X.fill();X.fillStyle='#000';}
+        X.fillText(emoji,z.x,z.y+bob);
+        
+        // 血条
+        var barW=40;
+        X.fillStyle='#333';X.fillRect(z.x-barW/2,z.y-28,barW,5);
+        X.fillStyle=z.hp>z.maxHp*0.5?'#4CAF50':(z.hp>z.maxHp*0.25?'#FFC107':'#F44336');
+        X.fillRect(z.x-barW/2,z.y-28,barW*(z.hp/z.maxHp),5);
+    });
+    
+    // 绘制子弹
+    bullets.forEach(function(b){
+        X.fillStyle='#000';
+        X.font='16px Arial';X.textAlign='center';
+        X.fillText(b.ice?'❄️':'🫛',b.x,b.y);
+    });
+    
+    // 绘制阳光
+    suns.forEach(function(s){
+        var pulse=1+Math.sin(Date.now()/200)*0.1;
+        X.globalAlpha=Math.min(1,s.life/60);
+        X.fillStyle='#000';
+        X.font=(30*pulse)+'px Arial';X.textAlign='center';
+        X.fillText('☀️',s.x,s.y);
+        X.globalAlpha=1;
+    });
+    
+    // 爆炸效果
+    explosions.forEach(function(e){
+        X.globalAlpha=e.life/30;
+        X.fillStyle='#ff6600';
+        X.beginPath();X.arc(e.x,e.y,e.radius,0,Math.PI*2);X.fill();
+        X.fillStyle='#ffcc00';
+        X.beginPath();X.arc(e.x,e.y,e.radius*0.6,0,Math.PI*2);X.fill();
+        X.globalAlpha=1;
+    });
+    
+    // 预览放置位置
+    if(selectedPlant){
+        var col=Math.floor((mouseX-GRID_OFFSET_X)/GRID_W);
+        var row=Math.floor((mouseY-GRID_OFFSET_Y)/GRID_H);
+        if(col>=0&&col<COLS&&row>=0&&row<ROWS){
+            var x=GRID_OFFSET_X+col*GRID_W;
+            var y=GRID_OFFSET_Y+row*GRID_H;
+            var exists=plants.some(function(p){return p.col===col&&p.row===row;});
+            X.fillStyle=exists?'rgba(255,0,0,0.3)':'rgba(0,255,0,0.3)';
+            X.fillRect(x,y,GRID_W,GRID_H);
+            X.fillStyle='#000';
+            X.font=(GRID_H*0.5)+'px Arial';X.textAlign='center';X.textBaseline='middle';
+            X.globalAlpha=0.6;
+            X.fillText(PLANTS[selectedPlant].emoji,x+GRID_W/2,y+GRID_H/2);
+            X.globalAlpha=1;
+        }
+    }
+    
+    // 铲子模式
+    if(shovelMode){
+        var col=Math.floor((mouseX-GRID_OFFSET_X)/GRID_W);
+        var row=Math.floor((mouseY-GRID_OFFSET_Y)/GRID_H);
+        if(col>=0&&col<COLS&&row>=0&&row<ROWS){
+            var x=GRID_OFFSET_X+col*GRID_W;
+            var y=GRID_OFFSET_Y+row*GRID_H;
+            X.fillStyle='rgba(255,0,0,0.3)';
+            X.fillRect(x,y,GRID_W,GRID_H);
+        }
+    }
+    
+    X.globalAlpha=1;
+}
+
+// HUD
+function updateHUD(){
+    document.getElementById('sun-count').textContent='☀️ '+sun;
+    document.getElementById('wave-info').textContent='第 '+wave+' 波 / '+maxWave;
+    document.querySelectorAll('.card').forEach(function(card){
+        var cost=parseInt(card.dataset.cost);
+        card.classList.toggle('disabled',sun<cost);
+    });
+}
+
+// 游戏结束
+function gameOver(){
+    on=false;
+    document.getElementById('fs').textContent='坚持到第 '+wave+' 波';
+    document.getElementById('gameOver').style.display='flex';
+}
+
+function gameWin(){
+    on=false;
+    document.getElementById('ws').textContent='成功守护家园！用时 '+Math.floor(gameTime/60)+' 秒';
+    document.getElementById('winScreen').style.display='flex';
+}
+
+// 游戏循环
+function loop(){
+    if(!on)return;
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+// 开始游戏
+function startGame(){
+    document.getElementById('start').style.display='none';
+    document.getElementById('gameOver').style.display='none';
+    document.getElementById('winScreen').style.display='none';
+    document.getElementById('hud').style.display='block';
+    document.getElementById('deck').style.display='flex';
+    document.getElementById('shovel').style.display='flex';
+    
+    sun=50;wave=0;gameTime=0;
+    plants=[];zombies=[];bullets=[];suns=[];explosions=[];
+    selectedPlant=null;shovelMode=false;
+    zombiesToSpawn=[];waveTimer=0;
+    
+    updateHUD();
+    on=true;
+    loop();
+}
+
+document.getElementById('go').addEventListener('click',startGame);
+document.getElementById('rbt').addEventListener('click',startGame);
+document.getElementById('wbt').addEventListener('click',startGame);
+
+// 鼠标点击阳光
+C.addEventListener('click',function(e){
+    if(!on)return;
+    for(var i=suns.length-1;i>=0;i--){
+        var s=suns[i];
+        if(Math.hypot(e.clientX-s.x,e.clientY-s.y)<30){
+            collectSun(s);
+            break;
+        }
+    }
+});
+</script>
+</body>
+</html>

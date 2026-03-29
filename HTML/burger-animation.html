@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>汉堡组装动画</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #ff9a56 0%, #ff6b35 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        h1 {
+            color: #fff;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .scene {
+            position: relative;
+            width: 400px;
+            height: 550px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .burger {
+            position: relative;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .layer {
+            position: relative;
+            opacity: 0;
+            transform: translateY(-150px) scale(0.8);
+            animation: dropIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            z-index: 1;
+        }
+
+        @keyframes dropIn {
+            0% {
+                opacity: 0;
+                transform: translateY(-150px) scale(0.8);
+            }
+            70% {
+                opacity: 1;
+                transform: translateY(5px) scale(1.02);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .plate {
+            width: 350px;
+            height: 25px;
+            background: linear-gradient(180deg, #f5f5f5 0%, #e0e0e0 50%, #d0d0d0 100%);
+            border-radius: 50%;
+            box-shadow: 
+                0 8px 20px rgba(0,0,0,0.3),
+                inset 0 -3px 8px rgba(0,0,0,0.1);
+            animation-delay: 0s;
+            z-index: 0;
+        }
+
+        .bottom-bun {
+            width: 260px;
+            height: 50px;
+            background: linear-gradient(180deg, #d4a056 0%, #c48a3f 50%, #b87d36 100%);
+            border-radius: 8px 8px 25px 25px;
+            box-shadow: 
+                inset 0 -8px 15px rgba(0,0,0,0.15),
+                0 3px 10px rgba(0,0,0,0.2);
+            animation-delay: 0.3s;
+            margin-bottom: -5px;
+        }
+
+        .patty {
+            width: 250px;
+            height: 40px;
+            background: linear-gradient(180deg, #8b4513 0%, #654321 50%, #4a3520 100%);
+            border-radius: 18px;
+            box-shadow: 
+                inset 0 5px 12px rgba(0,0,0,0.4),
+                inset 0 -3px 8px rgba(255,255,255,0.1),
+                0 3px 8px rgba(0,0,0,0.3);
+            animation-delay: 0.6s;
+        }
+
+        .patty::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            right: 20px;
+            height: 4px;
+            background: repeating-linear-gradient(90deg,
+                transparent 0px,
+                transparent 10px,
+                rgba(0,0,0,0.2) 10px,
+                rgba(0,0,0,0.2) 12px);
+            border-radius: 2px;
+        }
+
+        .cheese {
+            width: 270px;
+            height: 15px;
+            background: linear-gradient(180deg, #ffd700 0%, #ffb700 100%);
+            border-radius: 3px;
+            animation-delay: 0.9s;
+            position: relative;
+        }
+
+        .cheese::before,
+        .cheese::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            width: 35px;
+            height: 18px;
+            background: linear-gradient(180deg, #ffd700, #e6a800);
+            border-radius: 0 0 15px 15px;
+        }
+
+        .cheese::before {
+            left: 15px;
+            transform: rotate(-3deg);
+        }
+
+        .cheese::after {
+            right: 15px;
+            transform: rotate(3deg);
+        }
+
+        .lettuce {
+            width: 280px;
+            height: 20px;
+            background: linear-gradient(180deg, #90EE90 0%, #32CD32 50%, #228B22 100%);
+            border-radius: 50% 50% 50% 50% / 70% 70% 30% 30%;
+            animation-delay: 1.2s;
+            position: relative;
+        }
+
+        .lettuce::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 15px;
+            right: 15px;
+            height: 12px;
+            background: linear-gradient(90deg,
+                transparent 0%,
+                #98FB98 5%,
+                transparent 10%,
+                #98FB98 15%,
+                transparent 20%,
+                #98FB98 25%,
+                transparent 30%,
+                #98FB98 35%,
+                transparent 40%,
+                #98FB98 45%,
+                transparent 50%,
+                #98FB98 55%,
+                transparent 60%,
+                #98FB98 65%,
+                transparent 70%,
+                #98FB98 75%,
+                transparent 80%,
+                #98FB98 85%,
+                transparent 90%,
+                #98FB98 95%,
+                transparent 100%);
+            border-radius: 50%;
+        }
+
+        .tomato {
+            width: 240px;
+            height: 20px;
+            background: linear-gradient(180deg, #ff6347 0%, #dc143c 100%);
+            border-radius: 50%;
+            box-shadow: inset 0 3px 6px rgba(0,0,0,0.2);
+            animation-delay: 1.5s;
+        }
+
+        .tomato::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            height: 2px;
+            background: rgba(255,255,255,0.4);
+            border-radius: 2px;
+        }
+
+        .onion {
+            width: 230px;
+            height: 12px;
+            background: repeating-linear-gradient(90deg,
+                #e6e6fa 0px,
+                #dda0dd 4px,
+                #e6e6fa 8px);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            animation-delay: 1.8s;
+        }
+
+        .top-bun {
+            width: 260px;
+            height: 90px;
+            background: linear-gradient(180deg, #e8b87a 0%, #d4a056 30%, #c48a3f 100%);
+            border-radius: 50% 50% 8px 8px / 70% 70% 8px 8px;
+            box-shadow: 
+                inset 0 15px 25px rgba(255,255,255,0.3),
+                inset 0 -8px 15px rgba(0,0,0,0.1),
+                0 5px 15px rgba(0,0,0,0.3);
+            animation-delay: 2.1s;
+        }
+
+        .top-bun::before {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 25px;
+            width: 10px;
+            height: 6px;
+            background: #f5deb3;
+            border-radius: 50%;
+            box-shadow: 
+                35px 8px 0 #f5deb3,
+                70px 3px 0 #f5deb3,
+                105px 12px 0 #f5deb3,
+                140px 6px 0 #f5deb3,
+                175px 10px 0 #f5deb3,
+                50px 20px 0 #f5deb3,
+                85px 25px 0 #f5deb3,
+                120px 22px 0 #f5deb3,
+                155px 18px 0 #f5deb3;
+        }
+
+        .label {
+            position: absolute;
+            right: -100px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #fff;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            white-space: nowrap;
+            opacity: 0;
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        .bottom-bun .label { animation-delay: 0.6s; }
+        .patty .label { animation-delay: 0.9s; }
+        .cheese .label { animation-delay: 1.2s; }
+        .lettuce .label { animation-delay: 1.5s; }
+        .tomato .label { animation-delay: 1.8s; }
+        .onion .label { animation-delay: 2.1s; }
+        .top-bun .label { animation-delay: 2.4s; }
+
+        .controls {
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 12px 35px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
+            color: #ff6b35;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .floating {
+            position: fixed;
+            font-size: 2rem;
+            animation: float 4s ease-in-out infinite;
+            opacity: 0.25;
+            pointer-events: none;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+        }
+
+        .bg-items {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .sparkle {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: sparkle 0.6s ease-out forwards;
+        }
+
+        @keyframes sparkle {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        @media (max-width: 500px) {
+            .scene {
+                transform: scale(0.7);
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            .label {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-items" id="bgItems"></div>
+    
+    <h1>汉堡组装动画</h1>
+    
+    <div class="scene">
+        <div class="burger" id="burger">
+            <div class="layer plate"></div>
+            <div class="layer bottom-bun">
+                <span class="label">下层面包</span>
+            </div>
+            <div class="layer patty">
+                <span class="label">牛肉饼</span>
+            </div>
+            <div class="layer cheese">
+                <span class="label">芝士片</span>
+            </div>
+            <div class="layer lettuce">
+                <span class="label">生菜</span>
+            </div>
+            <div class="layer tomato">
+                <span class="label">番茄片</span>
+            </div>
+            <div class="layer onion">
+                <span class="label">洋葱圈</span>
+            </div>
+            <div class="layer top-bun">
+                <span class="label">上层面包</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="replay()">重新播放</button>
+    </div>
+
+    <script>
+        function createBgItems() {
+            const container = document.getElementById('bgItems');
+            const items = ['🍔', '🍟', '🥤', '🍅', '🥬', '🧀'];
+            for (let i = 0; i < 12; i++) {
+                const el = document.createElement('div');
+                el.className = 'floating';
+                el.textContent = items[i % items.length];
+                el.style.left = Math.random() * 100 + 'vw';
+                el.style.top = Math.random() * 100 + 'vh';
+                el.style.animationDelay = Math.random() * 4 + 's';
+                container.appendChild(el);
+            }
+        }
+
+        function replay() {
+            const layers = document.querySelectorAll('.layer');
+            layers.forEach(layer => {
+                layer.style.animation = 'none';
+                layer.offsetHeight;
+                layer.style.animation = '';
+            });
+            document.querySelectorAll('.label').forEach(label => {
+                label.style.animation = 'none';
+                label.offsetHeight;
+                label.style.animation = '';
+            });
+        }
+
+        function addSparkle(x, y) {
+            const colors = ['#ff6b35', '#ffd700', '#90EE90', '#ff6347', '#fff'];
+            for (let i = 0; i < 6; i++) {
+                const s = document.createElement('div');
+                s.className = 'sparkle';
+                s.style.left = x + (Math.random() - 0.5) * 40 + 'px';
+                s.style.top = y + (Math.random() - 0.5) * 40 + 'px';
+                s.style.background = colors[Math.floor(Math.random() * colors.length)];
+                document.body.appendChild(s);
+                setTimeout(() => s.remove(), 600);
+            }
+        }
+
+        document.addEventListener('click', e => addSparkle(e.clientX, e.clientY));
+        document.addEventListener('DOMContentLoaded', createBgItems);
+    </script>
+</body>
+</html>

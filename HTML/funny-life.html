@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>逗比人生2026</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow-x:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Helvetica Neue',Arial,sans-serif;background:#1a1a2e;color:#fff;min-height:100vh;min-height:100dvh}
+.app{max-width:100%;min-height:100vh;min-height:100dvh;padding:15px;position:relative}
+
+/* 开始界面 */
+.start-screen{text-align:center;padding-top:15vh}
+.title{font-size:clamp(28px,8vw,42px);margin-bottom:10px;text-shadow:2px 2px 0 #ff6b6b}
+.subtitle{color:#aaa;font-size:14px;margin-bottom:25px}
+.input-box{width:100%;max-width:320px;padding:14px 18px;font-size:16px;border:2px solid #ffd700;border-radius:12px;background:rgba(255,255,255,0.1);color:#fff;text-align:center;margin:15px 0}
+.input-box::placeholder{color:rgba(255,255,255,0.4)}
+.btn{width:100%;max-width:320px;padding:16px;font-size:18px;font-weight:bold;border:none;border-radius:12px;cursor:pointer;margin:8px 0;transition:transform 0.15s}
+.btn:active{transform:scale(0.96)}
+.btn-gold{background:linear-gradient(135deg,#ffd700,#ffaa00);color:#1a1a2e}
+.btn-green{background:linear-gradient(135deg,#4CAF50,#45a049);color:#fff}
+.btn-gray{background:rgba(255,255,255,0.15);color:#fff}
+.tips{color:#888;font-size:12px;margin-top:20px;line-height:1.8}
+
+/* 游戏界面 */
+.game-screen{display:none}
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:15px}
+.stat-item{background:rgba(255,255,255,0.08);border-radius:10px;padding:8px 4px;text-align:center}
+.stat-icon{font-size:20px}
+.stat-num{font-size:14px;font-weight:bold;margin:2px 0}
+.stat-bar{height:4px;background:rgba(255,255,255,0.15);border-radius:2px;overflow:hidden}
+.stat-fill{height:100%;border-radius:2px;transition:width 0.3s}
+
+/* 事件卡 */
+.event-card{background:linear-gradient(135deg,rgba(255,255,255,0.1),rgba(255,255,255,0.05));border-radius:16px;padding:20px;margin-bottom:15px;border:1px solid rgba(255,255,255,0.1)}
+.age-badge{text-align:center;margin-bottom:12px}
+.age-num{font-size:clamp(36px,12vw,52px);font-weight:bold;color:#ffd700;display:block}
+.age-label{font-size:12px;color:#aaa}
+.event-text{font-size:16px;line-height:1.8;margin-bottom:18px;min-height:80px}
+.choices{display:flex;flex-direction:column;gap:10px}
+.choice-btn{width:100%;padding:14px 16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:12px;color:#fff;font-size:15px;text-align:left;cursor:pointer;transition:all 0.2s;line-height:1.5}
+.choice-btn:active{background:rgba(255,215,0,0.2);border-color:#ffd700}
+.choice-btn:disabled{opacity:0.4}
+
+/* 副本入口 */
+.dungeon-entry{background:linear-gradient(135deg,#4a148c,#7b1fa2);border-radius:16px;padding:20px;margin:15px 0;text-align:center;animation:pulse 2s infinite}
+.dungeon-entry h3{font-size:20px;margin-bottom:8px}
+.dungeon-entry p{font-size:13px;color:#e1bee7}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(156,39,176,0.4)}50%{box-shadow:0 0 20px 10px rgba(156,39,176,0.2)}}
+
+/* 结局界面 */
+.end-screen{display:none;text-align:center}
+.tombstone{background:linear-gradient(180deg,#3a3a3a,#2a2a2a);border-radius:20px;padding:25px;margin:20px 0;border:2px solid #555}
+.tomb-emoji{font-size:48px;margin-bottom:10px}
+.tomb-name{font-size:22px;color:#ffd700;margin-bottom:8px}
+.tomb-age{color:#888;font-size:14px;margin-bottom:15px}
+.tomb-cause{color:#ff6b6b;font-size:14px;margin:12px 0}
+.tomb-epitaph{color:#ccc;font-style:italic;margin:15px 0;line-height:1.8;font-size:14px}
+.achievements{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:15px}
+.achievement{background:rgba(255,215,0,0.15);border:1px solid #ffd700;padding:6px 12px;border-radius:20px;font-size:12px;color:#ffd700}
+.no-achievement{color:#666;font-size:12px;margin-top:10px}
+
+/* 弹窗 */
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal-content{background:linear-gradient(135deg,#2a2a4a,#1a1a3a);border-radius:20px;padding:25px;max-width:350px;width:100%;text-align:center;border:2px solid #ffd700}
+.modal-content h3{font-size:20px;color:#ffd700;margin-bottom:15px}
+.modal-content p{font-size:14px;line-height:1.8;margin-bottom:15px}
+.modal.hidden{display:none}
+
+/* 通知 */
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.9);padding:10px 20px;border-radius:25px;font-size:14px;z-index:200;animation:toastIn 0.3s;border:1px solid}
+.toast.good{border-color:#4CAF50;color:#4CAF50}
+.toast.bad{border-color:#f44336;color:#f44336}
+.toast.info{border-color:#ffd700;color:#ffd700}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* 动画 */
+.fade-in{animation:fadeIn 0.4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
+.shake{animation:shake 0.4s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+</style>
+</head>
+<body>
+<div class="app">
+    <!-- 开始界面 -->
+    <div id="startScreen" class="start-screen">
+        <div class="title">🎭 逗比人生</div>
+        <p class="subtitle">2026版 | 体验一段离谱的人生</p>
+        <input type="text" id="nameInput" class="input-box" placeholder="取个名字开始人生..." maxlength="8">
+        <button class="btn btn-gold" onclick="startGame()">开始人生！</button>
+        <div class="tips">
+            💀 随时可能离谱地死去<br>
+            🎯 选择会影响未来走向<br>
+            🏆 解锁各种奇葩成就
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="gameScreen" class="game-screen">
+        <div class="stats-bar">
+            <div class="stat-item"><div class="stat-icon">💰</div><div class="stat-num" id="statMoney">50</div><div class="stat-bar"><div class="stat-fill" id="moneyBar" style="width:50%;background:#ffd700"></div></div></div>
+            <div class="stat-item"><div class="stat-icon">😊</div><div class="stat-num" id="statHappy">50</div><div class="stat-bar"><div class="stat-fill" id="happyBar" style="width:50%;background:#4CAF50"></div></div></div>
+            <div class="stat-item"><div class="stat-icon">❤️</div><div class="stat-num" id="statHealth">100</div><div class="stat-bar"><div class="stat-fill" id="healthBar" style="width:100%;background:#f44336"></div></div></div>
+            <div class="stat-item"><div class="stat-icon">⭐</div><div class="stat-num" id="statFame">0</div><div class="stat-bar"><div class="stat-fill" id="fameBar" style="width:0%;background:#9c27b0"></div></div></div>
+        </div>
+        <div class="event-card fade-in" id="eventCard">
+            <div class="age-badge"><span class="age-num" id="ageNum">0</span><span class="age-label">岁</span></div>
+            <div class="event-text" id="eventText"></div>
+            <div class="choices" id="choices"></div>
+        </div>
+        <div id="dungeonArea"></div>
+    </div>
+
+    <!-- 结局界面 -->
+    <div id="endScreen" class="end-screen">
+        <div class="tombstone fade-in">
+            <div class="tomb-emoji" id="tombEmoji">⚰️</div>
+            <div class="tomb-name" id="tombName"></div>
+            <div class="tomb-age" id="tombAge"></div>
+            <div class="tomb-cause" id="tombCause"></div>
+            <div class="tomb-epitaph" id="tombEpitaph"></div>
+            <div class="achievements" id="tombAchievements"></div>
+        </div>
+        <button class="btn btn-green" onclick="shareLife()">📋 复制人生简历</button>
+        <button class="btn btn-gray" onclick="location.reload()">🔄 再来一局</button>
+    </div>
+</div>
+
+<!-- 副本弹窗 -->
+<div id="dungeonModal" class="modal hidden">
+    <div class="modal-content">
+        <h3 id="dungeonTitle">🎮 副本开启！</h3>
+        <p id="dungeonDesc"></p>
+        <div id="dungeonChoices" class="choices"></div>
+    </div>
+</div>
+
+<script>
+// ========== 游戏状态 ==========
+var P = {
+    name:'', age:0,
+    money:50, happy:50, health:100, fame:0,
+    // 隐藏属性（累积影响结局）
+    study:0, charm:0, luck:50, imagination:0,
+    background:'', backgroundName:'',
+    flags:{}, achievements:[],
+    partner:null, job:'', university:''
+};
+
+// ========== 背景 ==========
+var BACKGROUNDS = [
+    {name:'富二代',emoji:'👔',money:95,happy:70,study:30,charm:60,desc:'家里有矿，什么都不缺'},
+    {name:'官二代',emoji:'🏛️',money:75,happy:60,study:40,charm:50,desc:'父亲是某局局长'},
+    {name:'拆迁户',emoji:'🏚️',money:90,happy:75,study:20,charm:40,desc:'家里拆了8套房，躺赢'},
+    {name:'网红家庭',emoji:'📱',money:65,happy:55,study:25,charm:70,desc:'父母是百万粉博主'},
+    {name:'普通家庭',emoji:'👨‍👩‍👦',money:45,happy:50,study:50,charm:45,desc:'父母是普通打工人'},
+    {name:'单亲家庭',emoji:'👩‍👦',money:30,happy:40,study:45,charm:40,desc:'由母亲独自抚养'},
+    {name:'农村家庭',emoji:'🌾',money:20,happy:45,study:55,charm:35,desc:'父母在家种地'},
+    {name:'低保户',emoji:'📭',money:10,happy:35,study:50,charm:30,desc:'政府救济中...'},
+    {name:'书香门第',emoji:'📚',money:50,happy:55,study:85,charm:50,desc:'祖上三代都是教授'},
+    {name:'星二代',emoji:'⭐',money:80,happy:60,study:15,charm:90,desc:'父母是明星'}
+];
+
+// ========== 事件库 ==========
+var EVENTS = {
+// ---- 0-5岁 ----
+0:[
+{t:'{name}出生了！{bg_desc}。接生的护士说这孩子{extra}。',c:[
+{t:'😭 哇哇大哭',e:{happy:5},f:'cry',r:'你哭得惊天动地，整个产房都能听到。护士笑着说："这孩子肺活量真好！"'},
+{t:'😐 冷静观察四周',e:{happy:-5,fame:5},f:'calm',r:'你居然不哭！护士都惊了："这孩子...在观察我们？" 医生说这是天生冷静的表现。'},
+{t:'👶 对着护士笑',e:{happy:10,charm:5},f:'smile',r:'你对着护士露出天使般的微笑！护士心都化了："天哪这个宝宝好可爱！" 旁边的产妇都羡慕了。'}
+]},
+{t:'{name}出生时天降异象！{extra2}',c:[
+{t:'🌈 天边出现彩虹',e:{luck:30,fame:10},f:'rainbow',r:'你出生的那一刻，窗外突然出现一道彩虹！爸妈觉得你是上天的礼物，奶奶说这是大吉大利的征兆！'},
+{t:'🌙 晚上出生，月亮特别圆',e:{luck:15},r:'你出生时刚好是满月，月亮又大又圆！外婆说这是"月光宝子"，以后一定有福气。'},
+{t:'☔ 下着大雨',e:{luck:-10},r:'出生那天下着倾盆大雨，雷声轰鸣。爸爸冒着雨去医院，路上还摔了一跤...但看到你的那一刻，一切都值了。'}
+]}
+],
+1:[
+{t:'1岁生日！{name}抓周了，面前摆着好多东西...',c:[
+{t:'💰 钞票',e:{money:20,fame:10},f:'grab_money',r:'你一把抓住钞票不放手！亲戚们起哄："这孩子以后是财迷！" 爸妈尴尬地笑了笑。'},
+{t:'📚 书本',e:{study:20,fame:5},f:'grab_book',r:'你拿起书就往嘴里塞...但至少证明你好学！爷爷高兴地说："书香门第有望了！"'},
+{t:'📱 手机',e:{fame:15,happy:10},f:'grab_phone',r:'你一把抓住手机就开始戳屏幕！大家惊呼："这孩子天生就是网红命！" 你已经会刷短视频了。'},
+{t:'🎮 游戏手柄',e:{happy:20,study:-10},f:'grab_game',r:'你拿起游戏手柄就不撒手！爸爸激动地说："我儿子！基因强大！" 妈妈在旁边叹气。'},
+{t:'💍 戒指',e:{charm:15},f:'grab_ring',r:'你抓起了妈妈的戒指！大家都笑了："这孩子以后肯定是个情圣！" 你对着戒指傻笑。'}
+]},
+{t:'{name}1岁就展现了天赋！',c:[
+{t:'🗣️ 说出了第一个词"卧槽"',e:{fame:10,imagination:10},f:'first_word',r:'你的第一句话不是"爸爸"也不是"妈妈"，而是...卧槽！全家震惊！爸爸说："基因太强了！" 妈妈气得要打人。'},
+{t:'🚶 自己学会了走路',e:{health:10,luck:10},r:'你1岁就自己站起来走路了！医生说这是天才的表现。爸妈开心得跳起来，然后你又摔倒了...'},
+{t:'😴 继续睡觉',e:{happy:5},r:'你对这个世界还不感兴趣，继续睡大觉。爸妈每天担心你是不是太懒了...但你睡得真的很香。'}
+]}
+],
+2:[
+{t:'{name}2岁，幼儿园面试。老师问：你爸爸是做什么的？',c:[
+{t:'💼 "我爸是老板"',e:{fame:10},cond:function(){return P.background==='富二代'},r:'你挺起胸膛说："我爸是老板！" 老师立刻对你刮目相看，给你发了一朵小红花。'},
+{t:'🏛️ "我爸是局长"',e:{fame:15},cond:function(){return P.background==='官二代'},r:'你骄傲地说："我爸是局长！" 老师的手都在抖，立刻把你分到了最好的班级。'},
+{t:'📱 "我爸是网红"',e:{fame:20},cond:function(){return P.background==='网红家庭'},r:'你说出爸妈的账号名，老师惊了："原来是xxx的孩子！" 当场要了签名。'},
+{t:'👔 "我爸是打工的"',e:{study:10},r:'你老实地说爸爸是打工人。老师点点头："踏实的孩子，以后肯定有出息。" 你获得了一张诚实卡。'},
+{t:'😭 "我没有爸爸"',e:{charm:10,happy:-10},cond:function(){return P.background==='单亲家庭'},r:'你小声说没有爸爸。老师心疼地抱住你："没关系，老师会照顾你的。" 同学们也对你特别友好。'}
+]},
+{t:'{name}和隔壁家的小孩打架了！',c:[
+{t:'💪 打赢了',e:{happy:15,charm:10},f:'fight_win',r:'你一拳打过去，对方哭了！你成了小区的孩子王！但妈妈被叫去道歉了...'},
+{t:'😭 打输了，哭着回家',e:{happy:-10},r:'你被揍了一顿哭着跑回家。妈妈心疼地帮你擦眼泪："下次打不过就跑！" 你学会了战略性撤退。'},
+{t:'🤝 打着打着成了朋友',e:{happy:15,luck:10},f:'fight_friend',r:'打着打着，你们突然笑了出来。最后居然成了好朋友，还一起分享了零食。妈妈说你情商高。'}
+]}
+],
+3:[
+{t:'幼儿园小班，{name}的才艺表演：',c:[
+{t:'🎤 唱了一首"孤勇者"',e:{fame:20,happy:10},f:'sing_guyong',r:'你站在台上大声唱："爱你孤身走暗巷！" 全班小朋友都跟着唱起来了！老师说你是天生的MC。'},
+{t:'💃 跳了一段科目三',e:{fame:25,happy:15},f:'dance_kemu',r:'你的科目三舞姿太魔性了！同学们都看呆了，视频被老师发到家长群，你火了！'},
+{t:'🎨 画了一幅抽象画',e:{imagination:20},f:'draw_abstract',r:'你画了一个圈加几条线，说这是"宇宙的起源"。老师惊为天人，把你的话贴在墙上展览。'},
+{t:'😴 在台上睡着了',e:{fame:-10,happy:5},r:'你唱着唱着居然睡着了！老师哭笑不得，但你的睡姿太可爱了，大家都原谅你了。'}
+]},
+{t:'{name}被小朋友欺负了：',c:[
+{t:'😤 反手就是一巴掌',e:{charm:10,happy:10},f:'revenge',r:'你反手就是一巴掌！对方愣住了，然后哭了。老师说你太暴力，但从此没人敢惹你了。'},
+{t:'😭 哭着找老师',e:{happy:-10},r:'你哭着找老师告状，老师帮你批评了那个小朋友。但其他同学开始叫你"告状精"...'},
+{t:'🧠 用计谋让他被老师骂',e:{imagination:20,fame:10},f:'smart',r:'你假装摔倒然后指着对方说他推你！老师信了，把他骂了一顿。你的城府让大人都自愧不如。'}
+]}
+],
+4:[
+{t:'{name}4岁，妈妈问你长大想做什么：',c:[
+{t:'🤖 "AI训练师"',e:{study:10,imagination:15},f:'dream_ai',r:'你认真地说要当AI训练师！妈妈疑惑地问那是什么，你说："就是教AI变聪明的人！" 全家都觉得你脑洞很大。'},
+{t:'🎮 "电竞选手"',e:{happy:15,study:-5},f:'dream_esport',r:'你要当电竞选手！爸爸激动地说："我儿子！基因强大！" 妈妈说："先考上大学再说..."'},
+{t:'📱 "网红/主播"',e:{fame:15,imagination:10},f:'dream_influencer',r:'你要当网红！妈妈说："先把你作业写完！" 但你已经开始对着镜子练习自我介绍了。'},
+{t:'👨‍🚀 "宇航员"',e:{fame:10},r:'你要上太空！爸爸买了航天模型给你，你开心极了。但妈妈担心你飞到太空不回来怎么办...'},
+{t:'💰 "有钱人"',e:{money:5},r:'你的梦想是成为有钱人！妈妈问具体怎么赚，你说："不知道，反正要很有钱！" 朴实无华的梦想。'},
+{t:'🛏️ "躺平"',e:{happy:10,study:-10},f:'dream躺平',r:'你说要躺平！爸妈惊呆了："你才4岁啊！" 你说："4岁就不能躺平吗？" 他们竟然无言以对。'}
+]},
+{t:'{name}发现了家里的小秘密：',c:[
+{t:'📜 发现爸妈的结婚照，他们好年轻',e:{happy:10},r:'你翻出了爸妈年轻时的结婚照！他们那时候好青涩啊。妈妈害羞地抢走了照片，爸爸在旁边傻笑。'},
+{t:'💰 在床底下找到私房钱',e:{money:10,imagination:10},f:'find_money',r:'你在床底下发现了一沓钱！爸爸冲过来："这是爸爸的...应急资金！" 妈妈冷笑地看着爸爸。从此你的零花钱增加了。'},
+{t:'📱 偷偷玩手机刷到了奇怪的视频',e:{imagination:15},f:'weird_video',r:'你刷到了一些...奇怪的视频。虽然看不懂，但你觉得这个世界真奇妙。你的世界观开始扭曲了。'}
+]}
+],
+5:[
+{t:'5岁，{name}上幼儿园中班，老师让画《我的梦想》：',c:[
+{t:'🎨 认真画了宇航员上月球',e:{study:15,imagination:10},r:'你画了一个宇航员站在月球上，还画了地球！老师说你有艺术家的天赋，把画贴在教室最显眼的位置。'},
+{t:'📱 画了一堆网红在直播',e:{fame:15},r:'你画了好多人对着手机说话。老师问这是什么，你说："他们在直播赚钱！" 老师陷入了沉思...'},
+{t:'💰 画了一座金山',e:{money:10},r:'你画了一座金灿灿的山，上面全是钱！老师问你为什么画这个，你说："因为我以后要很有钱！" 朴实的愿望。'},
+{t:'🤖 画了AI统治世界',e:{imagination:25,fame:10},cond:function(){return P.flags.dream_ai},r:'你画了一台巨大的电脑统治世界，人类都跪在它面前。老师看完后悄悄给你爸妈打了电话...'},
+{t:'🛏️ 画了一张床，写上"躺平"',e:{happy:15},f:'paint躺平',r:'你画了一张超级舒服的大床，旁边写着"躺平"两个大字。老师哭笑不得，但不得不承认画得很好。'}
+]}
+],
+
+// ---- 6-12岁 ----
+6:[
+{t:'{name}6岁上小学一年级！开学第一天...',c:[
+{t:'👀 发现班里有个穿全套奥特曼的同学',e:{happy:-5},r:'那个同学穿着全套奥特曼衣服，太帅了！你羡慕得不行，但你的衣服是妈妈买的普通款...差距啊。'},
+{t:'🤝 主动和他交朋友',e:{charm:15,luck:10},f:'friend_utm',r:'你鼓起勇气和奥特曼男孩说话，没想到他也想交朋友！你们约定周末一起玩，他答应借你奥特曼玩具。'},
+{t:'😎 "我穿的是限定款"',e:{fame:10},cond:function(){return P.money>70},r:'你淡定地说自己的衣服是限定款（其实是妈妈随便买的）。同学们都投来羡慕的目光，你心虚但很快乐。'}
+]},
+{t:'第一次考试！{name}考了：',c:[
+{t:'💯 满分！',e:{study:25,fame:15,happy:15},f:'first_test_100',r:'你考了100分！老师把你表扬了一番，还给你发了小红花。爸妈开心得给你买了新玩具！'},
+{t:'📊 90分',e:{study:15,happy:10},r:'你考了90分，差10分满分。老师说很不错，爸妈也很满意。但你知道，下次一定要满分！'},
+{t:'📈 60分，刚及格',e:{study:5},r:'你考了60分，刚好及格。爸妈说"还行"，但你能感受到他们眼中的失望...'},
+{t:'📉 30分...',e:{study:-10,happy:-15},r:'你只考了30分！爸妈脸色铁青，补习班安排上了。你的快乐童年从此结束...'}
+]}
+],
+7:[
+{t:'{name}7岁，班里流行起玩小天才电话手表。',c:[
+{t:'⌚ 让爸妈买了一个',e:{money:-15,fame:15},cond:function(){return P.money>30},r:'爸妈给你买了小天才手表！你开心极了，加了全班同学的微聊。但妈妈说下个月零花钱没了...'},
+{t:'📱 用爸妈的旧手机',e:{fame:5},r:'你用爸妈淘汰的旧手机，虽然有点卡，但也能加同学。不过没有小天才的你，总觉得少了点什么。'},
+{t:'😎 "我不需要"',e:{study:10},r:'你说你不需要！其实是因为买不起...但你说服了自己，把精力放在学习上。这种自我PUA以后很有用。'}
+]},
+{t:'{name}参加学校运动会：',c:[
+{t:'🏃 参加跑步比赛，拿了第一！',e:{health:20,fame:20,happy:15},f:'sports_win',r:'你在100米赛跑中一骑绝尘！全班都在欢呼你的名字。你感受到了人生第一次巅峰时刻！'},
+{t:'⚽ 参加足球赛，踢得很菜',e:{health:10},r:'你踢足球踢得一塌糊涂，球都碰不到几次。但重在参与，老师还是给你发了参与奖。'},
+{t:'📋 当了啦啦队',e:{charm:10,happy:10},r:'你虽然没参加比赛，但在场边加油加得最卖力！大家都记住了这个加油最热情的小朋友。'},
+{t:'😴 在旁边睡觉',e:{happy:5},r:'你居然在运动会现场睡着了！老师无奈地给你盖了件衣服。你的睡眠质量让所有人羡慕。'}
+]}
+],
+8:[
+{t:'{name}8岁，被叫家长了！原因是：',c:[
+{t:'💬 上课说话',e:{fame:-10},r:'你上课和同桌聊得火热，被老师抓了个正着！爸妈被叫到学校，场面一度十分尴尬...'},
+{t:'📝 作业没写完',e:{study:-10},r:'你作业没写完被老师发现了！妈妈帮你解释说是她没督促好，然后回家你的屁股开了花...'},
+{t:'🥊 和同学打架',e:{charm:10},r:'你和同学打了一架！虽然打赢了，但爸妈被叫去道歉。回家后他们居然偷偷夸你"有血性"...'},
+{t:'🎤 在课堂上唱孤勇者',e:{fame:20,imagination:10},cond:function(){return P.flags.sing_guyong},r:'你突然在课堂上唱起了孤勇者！全班同学都跟着唱，老师都崩溃了。但你的表演确实很有感染力！'}
+]},
+{t:'{name}8岁，开始学特长班：',c:[
+{t:'🎹 钢琴班',e:{study:15,charm:10,imagination:10},r:'你开始学钢琴了！虽然手指很短，但弹得还不错。妈妈说这叫"培养艺术气质"...'},
+{t:'🏊 游泳班',e:{health:25},r:'你学会了游泳！从此不怕水了，还瘦了一圈。爸妈觉得这笔投资很值。'},
+{t:'💻 编程班',e:{study:20,imagination:20},f:'learn_code',r:'你开始学编程了！虽然只会写"Hello World"，但你觉得自己已经是天才程序员了。'},
+{t:'🥊 拳击班',e:{health:15,charm:15},r:'你学了拳击！现在打架更厉害了。但妈妈担心你以后会不会暴力倾向...'},
+{t:'🎨 画画班',e:{imagination:20,charm:10},r:'你开始学画画了！虽然画得像火柴人，但老师说你的想象力很丰富。'},
+{t:'😤 啥都不学',e:{happy:10},r:'你拒绝了所有特长班！"我就要玩！" 妈妈无奈，但你的童年确实很快乐。'}
+]}
+],
+9:[
+{t:'{name}9岁，发现了短视频！偷偷躲在被子里刷到凌晨3点...',c:[
+{t:'📱 彻底沉迷',e:{happy:20,study:-20,fame:10},f:'douyin_addict',r:'你彻底沉迷短视频了！每天刷到凌晨，眼睛都快瞎了。但你知道了好多网络梗，成了班里的梗王。'},
+{t:'⏰ 自律地关掉了',e:{study:10},r:'你在凌晨12点准时放下手机！虽然很想继续刷，但你忍住了。妈妈要是知道一定会感动哭。'},
+{t:'💡 突然想自己拍视频',e:{imagination:20,fame:15},f:'want_vlog',r:'你突然想自己拍视频！虽然还没设备，但你已经想好了100个选题。你的网红梦从此开始。'}
+]},
+{t:'学校组织春游！{name}带了什么：',c:[
+{t:'🍱 妈妈做的便当',e:{happy:15},r:'妈妈给你做了超级豪华的便当！同学们都围过来蹭吃的，你成了全场焦点。'},
+{t:'🍔 肯德基全家桶',e:{happy:20,money:-10},r:'你带了肯德基全家桶！同学们都馋哭了，你大方地分给大家。快乐就是这么简单。'},
+{t:'📱 只带了手机',e:{happy:10},r:'你只带了手机！一边春游一边刷视频，完美诠释了什么叫"人在自然心在网"。'},
+{t:'📚 带了作业去写',e:{study:15},r:'你居然带作业去春游！老师感动得热泪盈眶，其他同学觉得你疯了...'}
+]}
+],
+10:[
+{t:'{name}10岁，四年级。班里转来一个新同学：',c:[
+{t:'👫 成了好朋友',e:{charm:15,luck:10},f:'new_friend',r:'新同学和你一见如故，很快就成了好朋友！你们一起上学一起放学，友谊的小船稳稳的。'},
+{t:'💕 好像喜欢上ta了',e:{charm:10,happy:10},f:'first_crush',r:'你好像喜欢上了这个新同学！虽然不懂这是什么感觉，但你会偷偷看ta，心跳加速。这就是初恋的感觉吗？'},
+{t:'😎 没什么感觉',e:{study:10},r:'新同学对你来说只是普通同学。你更关心今天的作业和明天的考试，感情什么的太麻烦了。'}
+]},
+{t:'{name}10岁生日，收到的礼物：',c:[
+{t:'🎮 Switch',e:{happy:25,money:-5},r:'爸妈送了你Switch！你开心得跳起来！从此以后每天都要玩两小时，成绩开始下滑...'},
+{t:'📱 手机',e:{happy:20,fame:10},r:'你终于有自己的手机了！第一时间下载了各种app，加入了班级群，感觉自己长大了。'},
+{t:'📚 全套百科全书',e:{study:25,imagination:15},r:'爸妈送了你一套百科全书...虽然你想玩游戏机，但这些书确实挺有意思的。你的知识量暴增。'},
+{t:'💰 红包666',e:{money:20,happy:15},r:'爷爷奶奶给你包了666的红包！你瞬间感觉自己是个小富婆/小富翁，已经开始计划怎么花了。'}
+]}
+],
+11:[
+{t:'{name}11岁，小升初前夕。压力山大...',c:[
+{t:'📚 拼命学习',e:{study:30,happy:-15,health:-10},f:'exam_grind',r:'你开始疯狂学习！每天学到凌晨，黑眼圈都出来了。爸妈心疼但又欣慰，这就是成长的代价。'},
+{t:'🛏️ 躺平，顺其自然',e:{happy:15,study:-10},f:'exam躺平',r:'你选择了躺平。"该来的总会来，该考的总会考。" 你的心态让爸妈哭笑不得。'},
+{t:'🧘 心态平和地复习',e:{study:15,happy:10},r:'你保持着良好的作息，按部就班地复习。不焦虑不躺平，这种心态真的很成熟。'}
+]},
+{t:'学校要求写作文《我的理想》：',c:[
+{t:'🤖 "成为AI工程师"',e:{study:10,imagination:15},cond:function(){return P.flags.dream_ai||P.flags.learn_code},r:'你写了一篇关于AI工程师的文章！老师给了高分，说你有前瞻性。但AI工程师到底干啥的？'},
+{t:'💰 "成为亿万富翁"',e:{money:10},r:'你写了一篇关于成为亿万富翁的作文。虽然很俗，但老师说你的文字很有感染力，梦想还是要有的。'},
+{t:'🛏️ "躺平过一生"',e:{happy:15,fame:10},r:'你写了一篇"躺平宣言"！老师看完后沉默了很久，然后给了你一个奇怪的表情。这篇文章在家长群传开了。'},
+{t:'🌍 "改变世界"',e:{fame:15,imagination:10},r:'你写了一个改变世界的伟大理想！虽然很空泛，但老师被你的热情感动，给了你全班最高分。'}
+]}
+],
+12:[
+{t:'小升初考试！{name}的成绩决定学校...',c:[
+{t:'🏫 考上重点初中！',e:{fame:25,study:20,happy:20},cond:function(){return P.study>=40},f:'key_middle',r:'你考上了重点初中！爸妈激动得抱在一起，奶奶说要给你包个大红包。你的努力没有白费！'},
+{t:'📖 普通初中',e:{study:10},r:'你考上了普通初中。虽然不是最好的，但爸妈说"在哪里都能学好"。你暗暗下定决心要好好努力。'},
+{t:'😅 只能上很差的学校',e:{study:-10,fame:-5},cond:function(){return P.study<25},r:'你只考上了很差的初中...爸妈虽然没说什么，但你能感受到他们的失望。新的开始，新的机会！'}
+]},
+{t:'{name}12岁，暑假发生了意外...',c:[
+{t:'🏊 在河边差点溺水，被救了',e:{health:-15,luck:20},f:'almost_drown',r:'你在河边玩水时差点溺水！幸好被路过的大叔救了。爸妈吓得魂都飞了，从此禁止你去河边。'},
+{t:'🎮 打了一个暑假游戏',e:{happy:20,study:-15},r:'你打了一整个暑假的游戏！从青铜打到了钻石，但作业一个字没写。开学前熬夜补作业，血的教训。'},
+{t:'📱 开始做短视频账号',e:{fame:20,imagination:10},cond:function(){return P.flags.want_vlog},f:'start_vlog',r:'你开始运营短视频账号了！虽然只有几十个粉丝，但你已经学会了剪辑和运营。这就是创业的第一步！'},
+{t:'📚 上了补习班',e:{study:20},r:'你上了整整两个月的补习班！虽然很累，但新学期的内容你都预习了，开学后成绩突飞猛进。'}
+]}
+],
+
+// ---- 13-15岁 ----
+13:[
+{t:'{name}13岁，初一。军训时教官特别凶...',c:[
+{t:'💪 咬牙坚持',e:{health:15,fame:10},r:'你在烈日下坚持军训！汗流浃背但没有放弃，教官对你刮目相看，结营时给你颁了"最佳表现奖"。'},
+{t:'😰 装晕倒了',e:{happy:10},r:'你灵机一动假装晕倒！被抬到了树荫下休息。虽然有点丢人，但至少不用继续晒太阳了...'},
+{t:'🤣 背后学教官说话，全班爆笑',e:{fame:25,imagination:10},f:'mock_teacher',r:'你模仿教官的口音和动作，全班笑到肚子疼！视频被同学偷拍发到网上，你火了但也被教官罚站了一下午。'}
+]},
+{t:'{name}13岁，开始追星/追剧/追番：',c:[
+{t:'🎤 成了某顶流的粉丝',e:{happy:10,fame:5},r:'你成了顶流明星的死忠粉！每天刷他的微博，买他的周边。妈妈说你乱花钱，你说这叫支持偶像。'},
+{t:'📺 疯狂追剧到凌晨',e:{happy:15,study:-10},r:'你追剧追到凌晨3点！虽然第二天上课打瞌睡被老师点名，但剧情太上头了根本停不下来。'},
+{t:'🎮 什么都不追，只打游戏',e:{happy:15},r:'你对追星追剧不感兴趣，只想打游戏。同学们觉得你out了，但你打游戏的段位比他们都高。'},
+{t:'📚 追求学习',e:{study:20},r:'当大家都在追星的时候，你在追着做题。虽然看起来不合群，但你的成绩证明了一切。'}
+]}
+],
+14:[
+{t:'{name}14岁，初二。偷偷染了头发被发现！',c:[
+{t:'🎨 "这是艺术！"',e:{fame:15,imagination:10},r:'你理直气壮地说这是艺术！老师都被你的回答惊到了，最后只是让你染回来。但你在学校出名了。'},
+{t:'😰 赶紧染回来',e:{study:10},r:'你吓得赶紧染回黑色！但染发剂质量太差，头发变得又干又枯。这次经历让你记住：便宜没好货。'},
+{t:'📱 拍照发到网上火了！',e:{fame:30,imagination:15},cond:function(){return P.flags.douyin_addict||P.flags.start_vlog},f:'hair_viral',r:'你把染发过程发到网上，居然火了！评论区都是"好勇敢""好酷"。你的粉丝暴涨，第一次体会到网红的感觉。'}
+]},
+{t:'{name}14岁，叛逆期！和爸妈吵架：',c:[
+{t:'😤 "你们不懂我！" 摔门',e:{happy:-10,fame:-5},r:'你大喊"你们不懂我"然后摔门进房间！爸妈在门外叹气。你躺在床上刷手机，觉得自己是世界上最孤独的人。'},
+{t:'📱 写了一条伤感朋友圈',e:{charm:10},r:'你发了一条"这个世界上没有人懂我"的朋友圈。虽然没人点赞，但有三个人来私聊你。原来还是有人关心你的。'},
+{t:'🧘 心平气和地沟通',e:{charm:15,study:5},r:'你选择了冷静沟通！爸妈很惊讶你这么成熟，一家三口聊了很久。原来他们只是太担心你了。'},
+{t:'🏃 离家出走（10分钟后回家吃饭）',e:{happy:5,fame:10},f:'runaway',r:'你"离家出走"了！但刚走到小区门口就饿了，灰溜溜地回家吃饭。爸妈假装没发现，给你留了饭。'}
+]}
+],
+15:[
+{t:'中考！{name}的三年努力见分晓...',c:[
+{t:'💯 考上重点高中！全校前十！',e:{fame:30,study:25,happy:25},cond:function(){return P.study>=60},f:'key_high',r:'你考了全校第十名！成功进入重点高中！爸妈激动得请了全家人吃饭，奶奶说要给你包个大红包。'},
+{t:'📈 考上重点高中',e:{fame:15,study:15,happy:15},cond:function(){return P.study>=40},r:'你考上了重点高中！虽然不是最拔尖的，但爸妈已经很满意了。新的开始，继续努力！'},
+{t:'📊 普通高中',e:{study:10},r:'你考上了普通高中。虽然有点遗憾，但爸妈说"在哪里都能学好"。高中三年，重新开始！'},
+{t:'😅 考砸了...',e:{study:-10,happy:-20},cond:function(){return P.study<30},r:'中考考砸了...爸妈虽然没说什么，但你知道他们很失望。没关系，人生还长，还有机会。'}
+]},
+{t:'中考完的暑假！{name}打算：',c:[
+{t:'📱 每天刷短视频',e:{happy:20,study:-10},r:'你每天从早刷到晚！虽然被爸妈骂了很多次，但你知道了好多网络热梗，开学后成了同学们的快乐源泉。'},
+{t:'🎮 打了两个月游戏',e:{happy:25},r:'你打了一整个暑假的游戏！从钻石打到了王者，段位比同学们都高。但作业...好像又没写。'},
+{t:'📚 提前预习高中课程',e:{study:20},r:'你居然提前预习了高中课程！开学后发现很多内容你都会了，上课轻松很多。这波操作太稳了。'},
+{t:'💼 打暑假工赚钱',e:{money:20,happy:-10},f:'summer_job',r:'你去奶茶店打工了一个月！虽然很累，但赚到了第一笔工资，感觉特别有成就感。'},
+{t:'✈️ 和同学去旅游',e:{happy:30,money:-20,charm:10},r:'你和好朋友去旅游了！看了很多美景，拍了很多照片。这段回忆会让你记一辈子。'}
+]}
+],
+
+// ---- 16-18岁 ----
+16:[
+{t:'{name}16岁，高一。发现班里有人在谈恋爱...',c:[
+{t:'👀 柠檬了',e:{happy:-5},r:'看着同学们出双入对，你心里酸酸的。但想想自己...算了，学习最重要！（其实也想有人喜欢）'},
+{t:'📚 没兴趣，学习更重要',e:{study:15},r:'你对谈恋爱毫无兴趣！当同学们在传小纸条的时候，你在刷题。这种定力，前途无量。'},
+{t:'📱 在网上找对象',e:{charm:10},f:'online_love',r:'你开始在网上找对象了！虽然还不知道对面是不是真人，但那种心跳的感觉很刺激。'},
+{t:'👀 自己也在暗恋某人',e:{charm:5,happy:5},r:'你暗恋着班里一个同学...虽然不敢表白，但每天能看到ta就很快乐。这就是暗恋的甜蜜吧。'}
+]},
+{t:'{name}16岁，发现了一个赚钱的方法：',c:[
+{t:'📱 做短视频/直播',e:{fame:20,money:15,imagination:10},cond:function(){return P.flags.start_vlog||P.flags.douyin_addict},f:'vlog_money',r:'你开始认真做短视频了！虽然粉丝不多，但每个月能赚点零花钱。妈妈说"不务正业"，但你用事实证明了自己。'},
+{t:'🎮 代练游戏',e:{money:15,study:-10},r:'你开始帮别人代练游戏！虽然赚了点钱，但每天打游戏打到手抽筋。妈妈说你是"网络乞丐"...'},
+{t:'📝 写网文小说',e:{imagination:25,fame:10},f:'write_novel',r:'你开始写网文小说了！虽然只有十几个读者，但你觉得自己就是下一个大神。你的脑洞越来越大。'},
+{t:'🛒 闲鱼倒卖',e:{money:20,imagination:10},r:'你在闲鱼上倒卖东西！低买高卖，赚了不少差价。妈妈说你"奸商"，你说这是"商业头脑"。'}
+]}
+],
+17:[
+{t:'高三！{name}进入冲刺阶段...',c:[
+{t:'📚 每天学到凌晨2点',e:{study:30,health:-20,happy:-20},f:'senior_grind',r:'你每天学到凌晨2点！黑眼圈比熊猫还重，但你的成绩在稳步提升。这就是高三的代价...'},
+{t:'🧘 保持正常作息',e:{study:15,health:10},r:'你保持着正常作息，不焦虑也不躺平。老师说你是"稳扎稳打型"，这种心态在高三很难得。'},
+{t:'🛏️ 实在太累了，躺平吧',e:{study:-10,happy:10},f:'senior躺平',r:'高三太累了，你选择了躺平。虽然爸妈很担心，但你说"身体是革命的本钱"...好像也有道理。'},
+{t:'📱 学习用AI辅助',e:{study:20,imagination:15},cond:function(){return P.flags.learn_code||P.flags.dream_ai},f:'ai_study',r:'你开始用AI辅助学习！效率直接翻倍，同学们都来问你怎么做到的。你第一次感受到科技的力量。'}
+]},
+{t:'{name}的同桌是个学霸/学渣：',c:[
+{t:'📚 和学霸同桌一起卷',e:{study:20},r:'你的同桌是学霸！你们一起刷题、一起讨论，成绩互相促进。这种学习伙伴太难得了。'},
+{t:'🤝 和学渣一起摸鱼',e:{happy:15,study:-10},r:'你和学渣同桌成了摸鱼搭子！上课偷偷聊天、传纸条，虽然成绩下滑了，但快乐是真的。'},
+{t:'💕 暗恋同桌',e:{charm:10,happy:5},r:'你发现自己好像喜欢上了同桌！虽然高三不应该谈恋爱，但那种偷偷看ta的感觉真的很美好。'}
+]}
+],
+18:[
+{t:'高考！{name}走进考场，心跳加速...',c:[
+{t:'💯 超常发挥！省状元！',e:{fame:50,study:30,happy:40},cond:function(){return P.study>=80&&P.luck>=50},f:'gaokao_genius',r:'你超常发挥！居然考了省状元！全城轰动，媒体争相报道，爸妈激动得哭了。你的名字被印在了光荣榜上！'},
+{t:'🎉 考上了985/211！',e:{fame:30,study:25,happy:30},cond:function(){return P.study>=60},f:'gaokao_good',r:'你考上了985大学！爸妈开心得请客吃饭，亲戚们都说你有出息。你的努力没有白费！'},
+{t:'📖 考上了普通本科',e:{fame:15,study:15,happy:15},cond:function(){return P.study>=40},r:'你考上了普通本科。虽然不是最好的，但爸妈说"大学靠自己"。新的起点，新的机会！'},
+{t:'😅 考上了大专',e:{study:5},cond:function(){return P.study>=20},r:'你考上了大专...虽然有点遗憾，但条条大路通罗马。很多人从大专逆袭成功，你也可以！'},
+{t:'😭 考砸了，选择复读',e:{happy:-25,study:10},cond:function(){return P.study<30},f:'redo_gaokao',r:'高考考砸了...你决定复读一年！虽然很痛苦，但你相信明年一定能考好。这是背水一战！'}
+]},
+{t:'高考后的暑假！{name}：',c:[
+{t:'📱 学车+旅游',e:{happy:30,money:-15},r:'你一边学驾照一边旅游！虽然花钱如流水，但这可能是人生最轻松的一个暑假了。'},
+{t:'💼 打工赚钱',e:{money:25,happy:-10},r:'你去打工了一个月！赚到了大学的生活费，感觉自己终于独立了。'},
+{t:'🎮 打了两个月游戏',e:{happy:25},r:'你打了一整个暑假的游戏！终于可以把高考期间错过的游戏都补回来了。'},
+{t:'💕 和暗恋的人表白',e:{charm:20,happy:20},cond:function(){return P.flags.online_love||P.charm>=40},f:'confess',r:'你鼓起勇气表白了！虽然不知道结果如何，但至少不会后悔。勇敢的人先享受世界！'},
+{t:'📱 趁热度做视频',e:{fame:25,money:15},cond:function(){return P.flags.vlog_money||P.flags.hair_viral},f:'summer_vlog',r:'你趁高考热度做了一期视频！关于高考经历的vlog火了，粉丝暴涨！这就是流量密码。'}
+]}
+],
+
+// ---- 19-22岁 ----
+19:[
+{t:'{name}19岁，大学开学！学校是：',c:[
+{t:'🏫 清北复交',e:{fame:30,study:20},cond:function(){return P.flags.gaokao_good||P.flags.gaokao_genius},r:'你进入了顶尖名校！校园又大又美，同学都是各省的学霸。你突然觉得自己好普通...'},
+{t:'📚 普通本科',e:{fame:10,study:10},r:'你进入了一所普通大学。虽然不是名校，但你会用四年证明自己。'},
+{t:'📖 大专',e:{study:5},r:'你来到了大专院校。有人说大专没前途，但你知道，决定未来的不是学历，是努力。'},
+{t:'🔄 复读中...',e:{study:20,happy:-15},cond:function(){return P.flags.redo_gaokao},r:'你在复读班里拼命学习！虽然很苦，但你相信明年的自己一定会感谢现在拼命的你。'}
+]},
+{t:'大学室友介绍：',c:[
+{t:'🎮 游戏宅',e:{happy:10,study:-5},r:'室友是个游戏宅！你们每天一起开黑，友谊迅速升温。虽然学习时间变少了，但快乐是真的。'},
+{t:'📚 学霸卷王',e:{study:15},r:'室友是个超级学霸！每天早上6点起床学习，在他的影响下，你也开始卷起来了。'},
+{t:'📱 网红/富二代',e:{fame:15,money:10},r:'室友居然是个网红/富二代！跟着他混，你见到了很多以前没见过的东西。'},
+{t:'🤝 成了好兄弟',e:{charm:15,luck:10},r:'你和室友一见如故，成了好兄弟！大学四年有这样一个朋友，太幸运了。'}
+]}
+],
+20:[
+{t:'{name}20岁，大二。ChatGPT火了...',c:[
+{t:'🤖 学习AI/编程',e:{study:20,imagination:20},f:'learn_ai',r:'你开始学习AI和编程了！每天和代码打交道，虽然很枯燥，但你知道这是未来的方向。'},
+{t:'😰 担心被AI取代',e:{happy:-10},r:'你开始焦虑了...AI这么厉害，会不会取代我的工作？但焦虑解决不了问题，行动才是关键。'},
+{t:'📱 用AI写作业',e:{happy:15,study:-10},r:'你用AI写作业！效率直接起飞，但你开始担心自己会不会变笨...'},
+{t:'💡 用AI搞副业赚钱',e:{money:25,imagination:15,fame:10},f:'ai_sidejob',r:'你用AI搞副业！帮人写文案、做设计，每个月能赚不少零花钱。这就是科技的力量。'}
+]},
+{t:'{name}20岁，开始找实习...',c:[
+{t:'💼 进了大厂实习！',e:{fame:20,money:15,study:15},cond:function(){return P.study>=50&&P.fame>=20},f:'big_intern',r:'你居然进了大厂实习！简历上多了这一笔，以后找工作容易多了。同事们都很厉害，你学到了很多。'},
+{t:'🏢 小公司实习',e:{money:10,study:10},r:'你在一家小公司实习！虽然规模不大，但你能接触到很多核心业务，学到的东西不少。'},
+{t:'😅 没找到实习',e:{happy:-10},r:'投了无数简历都没回音...你开始怀疑自己。但没关系，这只是暂时的，继续努力！'},
+{t:'🚀 自己创业了',e:{money:-10,fame:15,imagination:20},f:'start_biz',r:'你决定自己创业！虽然很艰难，但年轻人就是要敢闯。第一笔投资是爸妈给的...'}
+]}
+],
+21:[
+{t:'{name}21岁，大三。考虑未来方向：',c:[
+{t:'📚 考研',e:{study:20,happy:-10},f:'kaoyan',r:'你决定考研！每天泡在图书馆，虽然很累，但为了更好的未来，值得。'},
+{t:'💼 直接工作',e:{money:10},r:'你决定直接工作！虽然学历不是最高的，但工作经验更重要。先就业再择业。'},
+{t:'🌍 出国留学',e:{fame:15,study:15,money:-20},cond:function(){return P.money>40},r:'你决定出国深造！虽然要花很多钱，但能开阔眼界，值得投资。'},
+{t:'📱 做自媒体/直播',e:{fame:25,money:15},cond:function(){return P.flags.vlog_money||P.fame>=30},f:'full_vlog',r:'你决定全职做自媒体！虽然风险很大，但你相信自己的内容能力。这就是创业精神！'},
+{t:'🛏️ 躺平，毕业后再说',e:{happy:10,study:-15},r:'你决定先躺平...虽然很爽，但你开始担心毕业后怎么办。不管了，先享受当下。'}
+]},
+{t:'{name}21岁，遇到一个心动的人：',c:[
+{t:'💕 鼓起勇气追ta',e:{charm:20,happy:10},f:'pursue_love',r:'你鼓起勇气追求ta了！虽然不知道结果如何，但至少你勇敢了一次。勇敢的人先享受爱情！'},
+{t:'👀 只是暗恋',e:{charm:5},r:'你选择了暗恋...虽然不敢表白，但每天能看到ta就很快乐。暗恋也是一种美好的感情。'},
+{t:'📱 网恋',e:{charm:10,imagination:5},f:'net_love',r:'你开始网恋了！虽然还没见过面，但每天聊天到深夜，那种心动的感觉很真实。'},
+{t:'😎 单身万岁',e:{happy:10},r:'你觉得单身挺好！不用考虑另一半的感受，想干嘛干嘛。自由是最珍贵的。'}
+]}
+],
+22:[
+{t:'{name}22岁，毕业季！',c:[
+{t:'🎓 顺利毕业',e:{fame:10,study:5},r:'你顺利毕业了！拿到了毕业证和学位证，四年青春没有白费。毕业快乐！'},
+{t:'😭 延毕了',e:{happy:-20,study:-10},r:'你延毕了...因为论文没写完。虽然很丢人，但没关系，多学半年也没什么不好。'}
+]},
+{t:'找工作！{name}投了100份简历...',c:[
+{t:'💼 拿到大厂offer！年薪30万',e:{money:30,fame:20,happy:25},cond:function(){return P.study>=60&&P.fame>=25},f:'big_offer',r:'你拿到了大厂offer！年薪30万！爸妈激动得请了全家人吃饭，亲戚们都说你有出息。'},
+{t:'🏢 拿到普通offer',e:{money:15,happy:10},r:'你拿到了一家公司的offer！虽然工资不是很高，但能养活自己，还有成长空间。'},
+{t:'😅 只有小公司要我',e:{money:5},r:'只有小公司愿意要你...虽然有些失落，但千里之行始于足下，先干着再说。'},
+{t:'😭 没人要，继续找',e:{happy:-20},r:'投了100份简历都没回音...你开始怀疑人生了。但不要放弃，机会总会来的。'},
+{t:'📱 靠自媒体/副业赚钱',e:{fame:20,money:15},cond:function(){return P.flags.full_vlog||P.flags.ai_sidejob},r:'你决定靠自媒体/副业为生！虽然不稳定，但你相信只要坚持，一定能做起来。'}
+]}
+],
+
+// ---- 23-30岁 ----
+23:[
+{t:'{name}23岁，工作第一年。被996折磨...',c:[
+{t:'💪 卷起来！',e:{money:15,fame:10,health:-15,happy:-15},f:'jiujiuliu',r:'你选择了996！每天早9晚9一周6天，虽然很累，但老板很欣赏你。升职加薪指日可待。'},
+{text:'🧘 准点下班',e:{happy:20,fame:-10},f:'ontime',r:'你每天准时下班！同事们觉得你不上进，但你活得最滋润。Work-life balance，懂的都懂。'},
+{t:'📱 摸鱼做副业',e:{money:10,happy:10,imagination:10},r:'你上班摸鱼做副业！左手工资右手副业，两份收入，人生赢家。但要小心别被老板发现。'},
+{t:'🛏️ 躺平了',e:{happy:15,fame:-15},f:'work躺平',r:'你选择了躺平。不加班不内卷，到点就走。虽然赚得少，但活得轻松。躺平也是一种生活方式。'}
+]},
+{t:'{name}23岁，过年回家被催婚：',c:[
+{t:'😤 "别管我！"',e:{happy:-5},r:'你怼了回去："别管我！" 妈妈气得不轻，亲戚们都尴尬了。但你就是要表达自己的态度。'},
+{t:'☕ 去相亲了',e:{charm:10},r:'你去相亲了！对方还不错，虽然有点尴尬，但至少爸妈高兴了。'},
+{t:'📱 用AI生成假女友/男友照片',e:{imagination:20,fame:10},f:'ai_gf',r:'你用AI生成了假女友/男友照片发给爸妈！他们高兴坏了，让你下次带回家。谎言越编越大...'},
+{t:'😎 说已经有对象了（其实没有）',e:{happy:5},r:'你谎称有对象了！爸妈追问细节，你现场编了一个。演技炸裂！'}
+]}
+],
+24:[
+{t:'{name}24岁，工资终于过万！但...',c:[
+{t:'💰 继续卷，争取更高',e:{money:20,health:-10},r:'你继续拼命工作！工资涨了，但身体开始报警。颈椎病、腰椎间盘突出...'},
+{t:'📱 发工资就消费',e:{happy:20,money:-10},r:'发工资就购物！买了新手机新衣服，快乐是真的，但月底吃土也是真的。'},
+{t:'📈 开始理财/投资',e:{money:15,luck:10},f:'invest',r:'你开始学习理财了！虽然还不太懂，但知道钱不能只放银行。理财有风险，投资需谨慎。'},
+{t:'🏠 开始攒首付',e:{money:10},r:'你开始为买房存钱了！虽然首付遥遥无期，但至少有了目标。年轻人，加油！'}
+]},
+{t:'{name}24岁，感情进展：',c:[
+{t:'💕 脱单了！',e:{happy:30,charm:20},f:'have_partner',r:'你终于脱单了！对方很优秀，你们在一起很开心。恋爱的感觉真好！'},
+{t:'💔 刚分手',e:{happy:-25},r:'你刚经历了一段感情的结束...虽然很伤心，但这段经历让你成长了很多。'},
+{t:'📱 保持单身',e:{happy:5},r:'你选择保持单身！单身有单身的好处，至少省钱。'},
+{t:'💍 结婚了！',e:{happy:20,fame:10,money:-30},cond:function(){return P.charm>=50},r:'你居然结婚了！虽然很年轻，但遇到对的人就不要错过。婚礼上你笑得很开心。'}
+]}
+],
+25:[
+{t:'25岁，公司裁员！{name}被叫去谈话...',c:[
+{t:'😰 被裁了',e:{money:-30,happy:-30},bad:true,r:'你被裁员了！虽然拿了赔偿金，但找工作压力很大。这是人生的一个坎，但你相信更好的在后面。'},
+{t:'💼 被留下了',e:{fame:10},r:'你在裁员中幸存了！虽然同事走了很多，但你保住了工作。这就是实力。'},
+{t:'🚀 趁机跳槽涨薪50%',e:{money:30,fame:15},cond:function(){return P.study>=50||P.fame>=40},f:'jump_ship',r:'你趁机跳槽了！涨薪50%，新公司比以前更好。危机也是转机！'},
+{t:'📱 裁员后开始全职做自媒体',e:{fame:25,money:10},cond:function(){return P.flags.full_vlog||P.fame>=30},r:'你决定全职做自媒体！虽然没有稳定收入，但你相信自己能做起来。创业的种子开始发芽。'}
+]},
+{t:'{name}25岁，考虑人生大事：',c:[
+{t:'🏠 买房（贷款30年）',e:{money:-40,fame:15},f:'buy_house',r:'你买房了！虽然背着30年房贷，但终于有了自己的家。站在空荡荡的房子里，你充满了希望。'},
+{t:'🚗 先买车',e:{money:-20,happy:15},r:'你买车了！虽然只是代步车，但有了车之后生活方便多了。周末开车去兜风，太爽了。'},
+{t:'💰 存起来',e:{money:20},r:'你选择存钱！虽然没有买房买车，但看着银行卡余额越来越多，心里很踏实。'},
+{t:'🛏️ 继续躺平',e:{happy:10},r:'你继续躺平...不买房不买车，一人吃饱全家不饿。简单生活，也是一种选择。'}
+]}
+],
+26:[
+{t:'{name}26岁，家里催婚压力山大：',c:[
+{t:'💑 相亲结婚了',e:{happy:10,fame:10,money:-20},f:'blind_marriage',r:'你通过相亲结婚了！虽然认识时间不长，但对方人不错。婚礼上亲戚们都松了一口气。'},
+{t:'📱 在网上找到真爱',e:{happy:20,charm:15},f:'net_love_success',r:'你和网恋对象终于奔现了！比照片还好看，你们决定在一起。网恋也能修成正果！'},
+{t:'😎 坚持单身',e:{happy:5},r:'你坚持单身！面对家人的催婚，你说："等遇到对的人再说。"独立自主的人生，自己做主。'},
+{t:'💍 和前任复合了',e:{happy:10},r:'你和前任复合了！虽然分分合合，但你们发现彼此才是最合适的。'}
+]}
+],
+27:[
+{t:'{name}27岁，事业遇到瓶颈：',c:[
+{t:'💪 努力突破',e:{fame:20,study:10,health:-10},r:'你选择努力突破瓶颈！加班加点学习提升，虽然很累，但你相信付出总会有回报。'},
+{t:'🔄 考虑转行',e:{imagination:15},r:'你考虑转行了！虽然要从头开始，但你不后悔。人要敢于跳出舒适圈。'},
+{t:'🛏️ 躺平了',e:{happy:10,fame:-10},r:'你选择了躺平。虽然发展慢了点，但至少不用那么累。活着就好。'},
+{t:'🚀 自己创业！',e:{money:-30,fame:25,imagination:20},f:'real_biz',r:'你辞职创业了！虽然风险很大，但你相信自己。第一年很艰难，但你没有放弃。'}
+]},
+{t:'{name}27岁，发现了一个暴富机会：',c:[
+{t:'📈 投资/炒股/币圈',e:{money:50,luck:20},bad:true,f:'invest_crypto',r:'你All in了！一开始赚了不少，但后来...一夜回到解放前。投资有风险，入市需谨慎。'},
+{t:'📱 趁短视频红利',e:{fame:30,money:20},cond:function(){return P.flags.vlog_money||P.fame>=40},r:'你抓住了短视频的风口！粉丝暴涨，广告收入翻倍。风口上，猪都能飞起来。'},
+{t:'🤔 观望一下',e:{money:5},r:'你选择了观望。虽然错过了机会，但也避开了风险。稳健也是一种策略。'},
+{t:'😎 不感兴趣',e:{happy:5},r:'你对暴富不感兴趣。知足常乐，够用就好。这种心态很难得。'}
+]}
+],
+28:[
+{t:'{name}28岁，30岁焦虑开始：',c:[
+{t:'😰 感觉来不及了',e:{happy:-15},r:'你开始焦虑了...30岁快到了，但好像什么都没实现。别急，人生才刚开始。'},
+{t:'💪 继续努力',e:{fame:10,health:-5},r:'你选择继续努力！虽然看不到尽头，但你知道只要不放弃，总会到达终点。'},
+{t:'🧘 接受平凡',e:{happy:15},r:'你接受了平凡的自己。不是每个人都要成为人上人，平凡也是一种伟大。'},
+{t:'📱 在网上装成功人士',e:{fame:15,happy:5},r:'你在社交媒体上装成功人士！虽然现实没那么光鲜，但点赞的感觉真好。'}
+]},
+{t:'{name}28岁，同学聚会...',c:[
+{t:'💰 混得最好，全场焦点',e:{fame:20,happy:20},cond:function(){return P.money>=60||P.fame>=60},r:'你成了同学聚会的焦点！开着好车，穿着名牌，同学们都投来羡慕的眼光。'},
+{t:'😊 普普通通',e:{happy:5},r:'你在聚会上表现得很普通。没有炫耀也没有自卑，和老同学们聊得很开心。'},
+{t:'😔 被比下去了',e:{happy:-20},r:'看着同学们的成功，你有些失落。但你知道，每个人的时区不同，不必焦虑。'},
+{t:'😎 没去',e:{happy:10},r:'你选择不去同学聚会。不想攀比，也不想被问东问西。一个人待着也挺好的。'}
+]}
+],
+29:[
+{t:'{name}29岁，人生转折点：',c:[
+{t:'💼 升职加薪了！',e:{money:25,fame:15,happy:15},cond:function(){return P.study>=50||P.fame>=40},r:'你升职了！从普通员工变成了小领导，工资也涨了不少。多年的努力终于有了回报！'},
+{t:'📱 网红/博主事业爆发',e:{fame:40,money:30},cond:function(){return P.flags.vlog_money||P.flags.full_vlog},f:'viral',r:'你的账号突然爆火！粉丝从几万涨到几百万，广告费接到手软。你终于成功了！'},
+{t:'🚀 公司上市/大成功',e:{money:50,fame:40},cond:function(){return P.flags.real_biz&&P.luck>=50},f:'biz_success',r:'你的公司成功上市了！身价直接翻倍，从创业者变成了企业家。这是一段传奇！'},
+{t:'😰 30岁危机前兆',e:{happy:-15},r:'你感受到了30岁危机的压力...事业没有突破，感情也没有着落。但你相信，这只是暂时的。'}
+]},
+{t:'{name}29岁，感情状况：',c:[
+{t:'💍 结婚了',e:{happy:20,money:-20},f:'married',r:'你结婚了！虽然婚礼花了很多钱，但看着心爱的人穿着婚纱/西装走向你，一切都值得。'},
+{t:'💕 有对象，准备结婚',e:{happy:15},r:'你们决定结婚了！正在筹备婚礼中，虽然很累，但对未来充满期待。'},
+{t:'💔 还是单身',e:{happy:-10},r:'你还是单身...虽然有点孤单，但你相信缘分，该来的总会来。'},
+{t:'📱 和AI谈恋爱',e:{imagination:20,happy:10},cond:function(){return P.flags.learn_ai||P.flags.ai_gf},r:'你和AI助手谈起了恋爱！虽然听起来很离谱，但AI真的很懂你。这是新时代的爱情吗？'}
+]}
+],
+30:[
+{t:'{name}30岁！三十而立...',c:[
+{t:'🎉 事业有成，家庭美满',e:{fame:30,happy:30,money:20},cond:function(){return P.money>=50&&P.happy>=50},r:'你30岁就事业有成，家庭美满！这是多少人梦寐以求的生活。你做到了！'},
+{t:'😅 还在努力中',e:{fame:10},r:'30岁的你还在努力。虽然没有大富大贵，但你一直在前进。生活就是这样，慢慢来。'},
+{t:'😔 一事无成',e:{happy:-25},r:'30岁的你感到迷茫...但不要灰心，很多人30岁后才开始逆袭。你的故事还没结束。'},
+{t:'📱 靠短视频逆袭了！',e:{fame:35,money:25,happy:20},cond:function(){return P.flags.viral},r:'你靠短视频成功逆袭了！从普通打工人变成了网红。30岁，你的新人生才刚开始！'}
+]},
+{t:'30岁生日，{name}许愿：',c:[
+{t:'💰 希望发财',e:{money:10,luck:10},r:'你许愿发财！虽然不知道能不能实现，但有梦想总是好的。'},
+{t:'❤️ 希望找到真爱',e:{charm:15},r:'你许愿找到真爱！缘分这种事，急不来的。'},
+{t:'🌍 希望改变世界',e:{fame:10,imagination:10},r:'你许愿改变世界！虽然听起来很中二，但每个改变世界的人，一开始都是普通人。'},
+{t:'🛏️ 希望能一直躺平',e:{happy:20},r:'你许愿能一直躺平！这个愿望朴实无华，但却很难实现...'}
+]}
+]};
+
+// 随机死亡事件
+var RANDOM_DEATHS = [
+{age:[0,5],t:'吃奶时呛到了...',icon:'🍼'},
+{age:[0,8],t:'从床上掉下去...',icon:'🛏️'},
+{age:[5,12],t:'吃辣条时噎住了...',icon:'🌶️'},
+{age:[8,15],t:'玩手机玩到眼瞎...',icon:'📱'},
+{age:[10,18],t:'熬夜猝死...',icon:'💀'},
+{age:[12,20],t:'因为太丑被气死...',icon:'😭'},
+{age:[15,25],t:'被老板PUA到崩溃...',icon:'💼'},
+{age:[18,30],t:'996过劳...',icon:'😰'},
+{age:[20,35],t:'房贷压力太大...',icon:'🏠'},
+{age:[25,40],t:'相亲时对方太丑，气死了...',icon:'💔'},
+{age:[30,50],t:'辅导孩子作业气死...',icon:'📚'},
+{age:[35,55],t:'被AI取代后抑郁...',icon:'🤖'},
+{age:[40,60],t:'跳广场舞扭到脖子...',icon:'💃'},
+{age:[45,65],t:'保健品中毒...',icon:'💊'},
+{age:[50,70],t:'直播打赏到破产...',icon:'📺'},
+{age:[55,80],t:'被AI诈骗到破产...',icon:'🤖'},
+{age:[60,90],t:'抢遥控器时激动过度...',icon:'📺'},
+{age:[70,100],t:'活太久忘了怎么死的...',icon:'👴'}
+];
+
+// 副本系统
+var DUNGEONS = [
+{name:'🎮 游戏副本',desc:'你意外进入了游戏世界！',choices:[
+{t:'⚔️ 成为勇者打魔王',e:{fame:25,health:10,happy:15,imagination:20},text:'你成功击败魔王，成为传说！'},
+{t:'🏰 当个NPC混日子',e:{happy:20,luck:10},text:'作为NPC过得很滋润'},
+{t:'💰 在游戏里当奸商',e:{money:30,imagination:15},text:'赚了一大笔金币！'},
+{t:'🛏️ 在游戏里躺平',e:{happy:25},text:'发现游戏里也能躺平！'}
+]},
+{name:'🚀 穿越副本',desc:'你被一道神秘光芒击中，穿越了！',choices:[
+{t:'👑 穿越成皇帝',e:{fame:40,money:30,happy:20},text:'当上了皇帝，三宫六院！'},
+{t:'🤖 穿越成AI',e:{imagination:40,fame:20},text:'你变成了AI，可以读取所有知识！'},
+{t:'🐸 穿越成一只青蛙',e:{happy:5},text:'呱呱呱...'},
+{t:'📱 穿越回原始时代',e:{health:20,luck:15},text:'用现代知识在原始时代称王！'}
+]},
+{name:'🎰 抽奖副本',desc:'发现了一个神秘抽奖机！',choices:[
+{t:'🎰 抽一次！',e:{luck:20,money:30},text:'中了一等奖！运气爆棚！',cond:function(){return P.luck>=50}},
+{t:'🎰 抽一次！',e:{money:-10},text:'什么都没中...',cond:function(){return P.luck<50}},
+{t:'🤔 离开，不赌',e:{luck:10},text:'稳健的选择'},
+{t:'砸了抽奖机',e:{fame:15,health:-10},text:'发现里面藏着宝藏！'}
+]},
+{name:'👽 外星副本',desc:'外星人来访地球！',choices:[
+{t:'🤝 和外星人交朋友',e:{fame:50,imagination:30,luck:20},text:'你成了地球代言人！'},
+{t:'📸 拍照发到网上',e:{fame:30,money:20},text:'视频爆火，全网震惊！'},
+{t:'😈 绑架外星人',e:{fame:15,imagination:15},text:'科学家感谢你的贡献'},
+{t:'🛏️ 和外星人一起躺平',e:{happy:30},text:'发现外星人也想躺平'}
+]},
+{name:'💰 暴富副本',desc:'有人给你一个亿，条件是...',choices:[
+{t:'😴 当10年舔狗',e:{money:50,happy:-20},text:'你选择了钱，放弃了尊严'},
+{t:'🤔 当10年社畜',e:{money:40,health:-20},text:'用青春换来了财富'},
+{t:'😎 拒绝，保持尊严',e:{fame:20,happy:20},text:'你选择了尊严，他们是respect！'},
+{t:'🤖 让AI帮你',e:{money:30,imagination:20},text:'AI替你完成了任务！'}
+]}
+];
+
+// 成就系统
+var ACHIEVEMENTS_DEF = [
+{name:'躺平大师',icon:'🛏️',check:function(){return (P.flags.躺平_count||0)>=3}},
+{name:'卷王之王',icon:'👑',check:function(){return P.study>=80||P.flags.senior_grind}},
+{name:'网红体质',icon:'📱',check:function(){return P.fame>=70}},
+{name:'富可敌国',icon:'💰',check:function(){return P.money>=85}},
+{name:'社恐达人',icon:'🙈',check:function(){return P.charm<20&&P.age>25}},
+{name:'AI先锋',icon:'🤖',check:function(){return P.flags.learn_ai||P.flags.ai_sidejob}},
+{name:'游戏人生',icon:'🎮',check:function(){return P.flags.dream_esport||P.flags.grab_game}},
+{name:'桃花运',icon:'💕',check:function(){return (P.flags.have_partner?1:0)+(P.flags.married?1:0)+(P.flags.confess?1:0)>=2}},
+{name:'作死小能手',icon:'💀',check:function(){return P.health<20}},
+{name:'天选之人',icon:'🌈',check:function(){return P.flags.rainbow||P.luck>=80}},
+{name:'白手起家',icon:'🚀',check:function(){return P.flags.biz_success||P.flags.real_biz}},
+{name:'百岁老人',icon:'👴',check:function(){return P.age>=100}}
+];
+
+// ========== 辅助函数 ==========
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function random(min,max){return Math.floor(Math.random()*(max-min+1))+min}
+function randBool(p){return Math.random()<(p||0.5)}
+
+function showToast(msg,type){
+    var t=document.createElement('div');
+    t.className='toast '+type;
+    t.textContent=msg;
+    document.body.appendChild(t);
+    setTimeout(function(){t.remove()},1500);
+}
+
+function updateStats(){
+    P.money=clamp(P.money,0,100);
+    P.happy=clamp(P.happy,0,100);
+    P.health=clamp(P.health,0,100);
+    P.fame=clamp(P.fame,0,100);
+    document.getElementById('statMoney').textContent=Math.round(P.money);
+    document.getElementById('statHappy').textContent=Math.round(P.happy);
+    document.getElementById('statHealth').textContent=Math.round(P.health);
+    document.getElementById('statFame').textContent=Math.round(P.fame);
+    document.getElementById('moneyBar').style.width=P.money+'%';
+    document.getElementById('happyBar').style.width=P.happy+'%';
+    document.getElementById('healthBar').style.width=P.health+'%';
+    document.getElementById('fameBar').style.width=P.fame+'%';
+}
+
+// ========== 游戏逻辑 ==========
+function startGame(){
+    var name=document.getElementById('nameInput').value.trim()||'无名氏';
+    P.name=name;
+    var bg=BACKGROUNDS[random(0,BACKGROUNDS.length-1)];
+    P.background=bg.name;
+    P.backgroundName=bg.name;
+    P.money=bg.money;P.happy=bg.happy;
+    P.study=bg.study;P.charm=bg.charm;
+    P.flags.background_desc=bg.desc;
+    
+    document.getElementById('startScreen').style.display='none';
+    document.getElementById('gameScreen').style.display='block';
+    
+    updateStats();
+    showEvent(0);
+    showToast(bg.emoji+' 出生在'+bg.name+' - '+bg.desc,'info');
+}
+
+function showEvent(age){
+    P.age=age;
+    document.getElementById('ageNum').textContent=age;
+    
+    // 检查副本触发（10%概率，5岁后）
+    if(age>=5&&Math.random()<0.12){
+        triggerDungeon();
+        return;
+    }
+    
+    var evts=EVENTS[age];
+    if(!evts){nextAge();return;}
+    
+    var evt=evts[random(0,evts.length-1)];
+    var text=typeof evt.t==='function'?evt.t():evt.t;
+    text=text.replace(/{name}/g,P.name)
+             .replace(/{bg_desc}/g,P.flags.background_desc||'')
+             .replace(/{extra}/g,['哭声特别大','长得特别可爱','眼睛特别有神','手脚特别灵活'][random(0,3)])
+             .replace(/{extra2}/g,['天边出现彩虹','出生时猫叫了三声','窗外有喜鹊叫','刚好是午夜十二点'][random(0,3)]);
+    
+    document.getElementById('eventText').textContent=text;
+    var cd=document.getElementById('choices');
+    cd.innerHTML='';
+    
+    evt.c.forEach(function(ch){
+        if(ch.cond&&!ch.cond())return;
+        var btn=document.createElement('button');
+        btn.className='choice-btn';
+        btn.textContent=ch.t;
+        btn.onclick=function(){makeChoice(ch)};
+        cd.appendChild(btn);
+    });
+    
+    document.getElementById('eventCard').classList.remove('fade-in');
+    void document.getElementById('eventCard').offsetWidth;
+    document.getElementById('eventCard').classList.add('fade-in');
+}
+
+function makeChoice(ch){
+    // 先显示剧情结果
+    if(ch.r){
+        showResult(ch.r, function(){
+            applyChoice(ch);
+        });
+    } else {
+        applyChoice(ch);
+    }
+}
+
+function showResult(text, callback){
+    document.getElementById('eventText').innerHTML = '<div style="color:#ffd700;margin-bottom:10px">📌 结果：</div>' + text;
+    var btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = '继续 ▶️';
+    btn.onclick = function(){
+        if(callback) callback();
+        else nextAge();
+    };
+    document.getElementById('choices').innerHTML = '';
+    document.getElementById('choices').appendChild(btn);
+}
+
+function applyChoice(ch){
+    // 清除待执行回调
+    window._pendingCallback = null;
+    
+    if(ch.e){
+        ['money','happy','health','fame','study','charm','luck','imagination'].forEach(function(k){
+            if(ch.e[k]){
+                P[k]+=ch.e[k];
+                if(k!=='luck'&&k!=='study'&&k!=='charm'&&k!=='imagination'&&ch.e[k]>0)
+                    showToast('+'+ch.e[k]+' '+({money:'💰',happy:'😊',health:'❤️',fame:'⭐'}[k]||k),'good');
+                if(ch.e[k]<0&&k!=='luck'&&k!=='study'&&k!=='charm'&&k!=='imagination')
+                    showToast(ch.e[k]+' '+({money:'💰',happy:'😊',health:'❤️',fame:'⭐'}[k]||k),'bad');
+            }
+        });
+    }
+    if(ch.f)P.flags[ch.f]=true;
+    if(ch.f&&ch.f.includes('躺平'))P.flags.躺平_count=(P.flags.躺平_count||0)+1;
+    
+    updateStats();
+    
+    // 死亡检查
+    if(P.health<=0){die('因健康值归零而去世','💀');return;}
+    if(P.happy<=0){die('因抑郁而离开人世','😢');return;}
+    if(P.money<-30){die('因负债累累而崩溃','💸');return;}
+    
+    // 随机死亡
+    if(randBool(0.04)){checkRandomDeath();return;}
+    
+    nextAge(); // 进入下一阶段
+}
+
+function nextAge(){
+    var next=P.age+random(1,2);
+    while(next<=120&&!EVENTS[next]){next++;}
+    if(next>120){die('寿终正寝，活到了120岁！','🎉');return;}
+    if(randBool(0.03)){checkRandomDeath();return;}
+    showEvent(next);
+}
+
+function checkRandomDeath(){
+    for(var i=0;i<RANDOM_DEATHS.length;i++){
+        var d=RANDOM_DEATHS[i];
+        if(P.age>=d.age[0]&&P.age<d.age[1]&&randBool(0.4)){
+            die(d.t,d.icon);return;
+        }
+    }
+    nextAge();
+}
+
+function triggerDungeon(){
+    var d=DUNGEONS[random(0,DUNGEONS.length-1)];
+    document.getElementById('dungeonTitle').textContent=d.name;
+    document.getElementById('dungeonDesc').textContent=d.desc;
+    var cd=document.getElementById('dungeonChoices');
+    cd.innerHTML='';
+    d.choices.forEach(function(ch){
+        if(ch.cond&&!ch.cond())return;
+        var btn=document.createElement('button');
+        btn.className='choice-btn';
+        btn.textContent=ch.t;
+        btn.onclick=function(){
+            // 应用效果
+            if(ch.e){
+                ['money','happy','health','fame','study','charm','luck','imagination'].forEach(function(k){
+                    if(ch.e[k])P[k]+=ch.e[k];
+                });
+            }
+            updateStats();
+            document.getElementById('dungeonModal').classList.add('hidden');
+            showToast(ch.text,'info');
+            setTimeout(function(){nextAge();},800);
+        };
+        cd.appendChild(btn);
+    });
+    document.getElementById('dungeonModal').classList.remove('hidden');
+}
+
+function die(cause,icon){
+    document.getElementById('gameScreen').style.display='none';
+    document.getElementById('endScreen').style.display='block';
+    
+    document.getElementById('tombEmoji').textContent=icon||'⚰️';
+    document.getElementById('tombName').textContent=P.name+' '+P.background;
+    document.getElementById('tombAge').textContent='享年'+P.age+'岁 | 💰'+Math.round(P.money)+' 😊'+Math.round(P.happy)+' ❤️'+Math.round(P.health)+' ⭐'+Math.round(P.fame);
+    document.getElementById('tombCause').textContent='死因：'+cause;
+    
+    var epitaphs=['来也匆匆，去也匆匆。','躺平了一生，也挺好。','卷了一辈子，终于可以休息了。','愿天堂没有996。','下辈子还做人。','人生如戏，全靠演技。','此生无悔，来世还来。','活着就是胜利。','平凡也是一种伟大。'];
+    document.getElementById('tombEpitaph').textContent='「'+epitaphs[random(0,epitaphs.length-1)]+'」';
+    
+    var ad=document.getElementById('tombAchievements');
+    ad.innerHTML='';
+    var count=0;
+    ACHIEVEMENTS_DEF.forEach(function(a){
+        if(a.check()){
+            P.achievements.push(a.name);
+            ad.innerHTML+='<span class="achievement">'+a.icon+' '+a.name+'</span>';
+            count++;
+        }
+    });
+    if(count===0)ad.innerHTML='<div class="no-achievement">一个成就都没达成...</div>';
+}
+
+function shareLife(){
+    var t='🎭 逗比人生\n';
+    t+='出生：'+P.background+'\n';
+    t+='享年：'+P.age+'岁\n';
+    t+='属性：💰'+Math.round(P.money)+' 😊'+Math.round(P.happy)+' ❤️'+Math.round(P.health)+' ⭐'+Math.round(P.fame)+'\n';
+    if(P.achievements.length)t+='成就：'+P.achievements.join('、')+'\n';
+    t+='\n你的人生会怎样？来试试吧！';
+    
+    if(navigator.clipboard){
+        navigator.clipboard.writeText(t).then(function(){showToast('已复制到剪贴板！','good');});
+    }else{
+        var ta=document.createElement('textarea');
+        ta.value=t;document.body.appendChild(ta);
+        ta.select();document.execCommand('copy');
+        ta.remove();
+        showToast('已复制到剪贴板！','good');
+    }
+}
+</script>
+</body>
+</html>

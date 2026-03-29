@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Mope - 单人版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #1a1a2e; 
+            overflow: hidden; 
+            font-family: 'Arial', sans-serif;
+            cursor: crosshair;
+        }
+        canvas { display: block; }
+        
+        .ui-panel {
+            position: fixed;
+            padding: 12px 15px;
+            background: rgba(0,0,0,0.75);
+            border-radius: 12px;
+            color: #fff;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+        
+        .status-panel {
+            top: 15px;
+            left: 15px;
+            min-width: 190px;
+        }
+        
+        .animal-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .animal-emoji { font-size: 28px; }
+        
+        .bar-container { margin-bottom: 6px; }
+        
+        .bar-label {
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 2px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .bar-bg {
+            height: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .bar-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.2s;
+        }
+        
+        .xp-bar .bar-fill { background: linear-gradient(90deg, #9b59b6, #e74c3c); }
+        .water-bar .bar-fill { background: linear-gradient(90deg, #3498db, #00d4ff); }
+        .health-bar .bar-fill { background: linear-gradient(90deg, #27ae60, #2ecc71); }
+        
+        .evolution-panel {
+            top: 15px;
+            right: 15px;
+            text-align: center;
+            min-width: 100px;
+        }
+        
+        .biome-panel {
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            padding: 8px 20px;
+        }
+        
+        .biome-name {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .biome-effect {
+            font-size: 11px;
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .hint-panel {
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            padding: 6px 15px;
+        }
+        
+        .minimap {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            width: 140px;
+            height: 140px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            z-index: 10;
+        }
+        
+        .death-screen {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        
+        .death-screen h1 {
+            font-size: 48px;
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        
+        .death-screen p {
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .restart-btn {
+            padding: 15px 50px;
+            font-size: 18px;
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            border: none;
+            border-radius: 50px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .restart-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(46,204,113,0.5);
+        }
+        
+        .evolve-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            padding: 30px 50px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 50;
+            display: none;
+            border: 2px solid #f1c40f;
+        }
+        
+        .evolve-notification h2 {
+            color: #f1c40f;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .evolve-notification .new-animal {
+            font-size: 60px;
+            margin: 15px 0;
+        }
+        
+        .evolve-notification p {
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .kill-feed {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .kill-msg {
+            background: rgba(0,0,0,0.8);
+            padding: 6px 12px;
+            border-radius: 15px;
+            color: #fff;
+            font-size: 13px;
+            animation: fadeOut 3s forwards;
+            white-space: nowrap;
+        }
+        
+        @keyframes fadeOut {
+            0%, 70% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        
+        /* 进化链显示 */
+        .evolution-chain {
+            position: fixed;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 5px;
+            z-index: 10;
+        }
+        
+        .chain-item {
+            width: 30px;
+            height: 30px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        
+        .chain-item.current {
+            border-color: #f1c40f;
+            box-shadow: 0 0 10px rgba(241,196,15,0.5);
+        }
+        
+        .chain-item.completed {
+            border-color: #2ecc71;
+            background: rgba(46,204,113,0.3);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="ui-panel status-panel">
+        <div class="animal-name">
+            <span class="animal-emoji" id="animalEmoji">🐭</span>
+            <span id="animalName">老鼠</span>
+        </div>
+        
+        <div class="bar-container health-bar">
+            <div class="bar-label">
+                <span>❤️ 生命</span>
+                <span id="healthText">100%</span>
+            </div>
+            <div class="bar-bg">
+                <div class="bar-fill" id="healthFill" style="width: 100%"></div>
+            </div>
+        </div>
+        
+        <div class="bar-container water-bar">
+            <div class="bar-label">
+                <span>💧 水分</span>
+                <span id="waterText">100%</span>
+            </div>
+            <div class="bar-bg">
+                <div class="bar-fill" id="waterFill" style="width: 100%"></div>
+            </div>
+        </div>
+        
+        <div class="bar-container xp-bar">
+            <div class="bar-label">
+                <span>⭐ 经验</span>
+                <span id="xpText">0/100</span>
+            </div>
+            <div class="bar-bg">
+                <div class="bar-fill" id="xpFill" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 8px; font-size: 11px; color: rgba(255,255,255,0.5);">
+            大小: <span id="sizeText">15</span> | 击杀: <span id="killCount">0</span>
+        </div>
+    </div>
+    
+    <div class="ui-panel evolution-panel">
+        <div style="font-size: 10px; color: rgba(255,255,255,0.5);">下一进化</div>
+        <div style="font-size: 24px;" id="nextAnimal">🐰</div>
+        <div style="font-size: 11px;" id="nextName">兔子</div>
+    </div>
+    
+    <div class="ui-panel biome-panel">
+        <div class="biome-name" id="biomeName">🌿 草地</div>
+        <div class="biome-effect" id="biomeEffect">正常速度</div>
+    </div>
+    
+    <div class="evolution-chain" id="evolutionChain"></div>
+    
+    <canvas class="minimap" id="minimap" width="140" height="140"></canvas>
+    
+    <div class="ui-panel hint-panel">
+        🟢可吃 🔴危险 🟡同级 | 不同地形有速度加成
+    </div>
+    
+    <div class="kill-feed" id="killFeed"></div>
+    
+    <div class="death-screen" id="deathScreen">
+        <h1>💀 游戏结束</h1>
+        <p>最终: <span id="finalAnimal">老鼠</span> | 经验: <span id="finalScore">0</span> | 击杀: <span id="finalKills">0</span></p>
+        <button class="restart-btn" id="restartBtn">再来一次</button>
+    </div>
+    
+    <div class="evolve-notification" id="evolveNotify">
+        <h2>🎉 进化!</h2>
+        <div class="new-animal" id="evolveEmoji">🐰</div>
+        <p id="evolveName">进化为 兔子</p>
+    </div>
+
+    <script>
+        // ==================== 游戏配置 ====================
+        const CONFIG = {
+            WORLD_SIZE: 5000,
+            FOOD_COUNT: 300,
+            WATER_COUNT: 25,
+            NPC_COUNT: 100,
+            WATER_DRAIN_RATE: 0.02,
+            HEALTH_DRAIN_RATE: 0.06,
+            WATER_REGEN_RATE: 0.6,
+            XP_MULTIPLIER: 1.0,
+        };
+
+        // ==================== 生物群系 ====================
+        const BIOMES = {
+            GRASS: { 
+                name: '🌿 草地', 
+                color: '#2d5a27', 
+                speedMod: 1.0,
+                effect: '正常速度',
+                foodColor: ['#e91e63', '#9c27b0', '#4caf50']
+            },
+            WATER: { 
+                name: '💧 水域', 
+                color: '#1565c0', 
+                speedMod: 0.7,
+                effect: '减速30% (陆地动物)',
+                foodColor: ['#00bcd4', '#0097a7', '#26c6da'],
+                waterSpeedBoost: 1.3  // 水生动物加速
+            },
+            SNOW: { 
+                name: '❄️ 雪地', 
+                color: '#b0bec5', 
+                speedMod: 0.85,
+                effect: '减速15%',
+                foodColor: ['#eceff1', '#cfd8dc', '#b0bec5']
+            },
+            DESERT: { 
+                name: '🏜️ 沙漠', 
+                color: '#d4a056', 
+                speedMod: 0.9,
+                effect: '减速10%，水分消耗+50%',
+                foodColor: ['#ff9800', '#ffc107', '#ff5722']
+            }
+        };
+
+        // 生物群系区域定义 (矩形区域)
+        const BIOME_ZONES = [
+            // 草地 - 中心区域
+            { biome: 'GRASS', x: 1500, y: 1500, width: 2000, height: 2000 },
+            // 水域 - 左上
+            { biome: 'WATER', x: 0, y: 0, width: 1500, height: 1500 },
+            // 水域 - 右下
+            { biome: 'WATER', x: 3500, y: 3500, width: 1500, height: 1500 },
+            // 雪地 - 右上
+            { biome: 'SNOW', x: 3500, y: 0, width: 1500, height: 1500 },
+            // 雪地 - 左下
+            { biome: 'SNOW', x: 0, y: 3500, width: 1500, height: 1500 },
+            // 沙漠 - 中上
+            { biome: 'DESERT', x: 1800, y: 0, width: 1400, height: 1200 },
+            // 沙漠 - 中下
+            { biome: 'DESERT', x: 1800, y: 3800, width: 1400, height: 1200 },
+        ];
+
+        // ==================== 动物进化链 (8个阶段) ====================
+        const ANIMALS = [
+            { 
+                name: '老鼠', emoji: '🐭', color: '#9e9e9e', 
+                size: 15, speed: 4.5, xpNeed: 0, tier: 0,
+                biome: 'GRASS', desc: '小而敏捷'
+            },
+            { 
+                name: '兔子', emoji: '🐰', color: '#a1887f', 
+                size: 22, speed: 5.5, xpNeed: 100, tier: 1,
+                biome: 'GRASS', desc: '速度很快'
+            },
+            { 
+                name: '狐狸', emoji: '🦊', color: '#ff7043', 
+                size: 32, speed: 5.0, xpNeed: 300, tier: 2,
+                biome: 'GRASS', desc: '聪明狡猾'
+            },
+            { 
+                name: '野猪', emoji: '🐗', color: '#5d4037', 
+                size: 45, speed: 4.0, xpNeed: 600, tier: 3,
+                biome: 'GRASS', desc: '强壮有力'
+            },
+            { 
+                name: '鳄鱼', emoji: '🐊', color: '#33691e', 
+                size: 55, speed: 3.5, xpNeed: 1000, tier: 4,
+                biome: 'WATER', desc: '水中霸主，水域加速',
+                isAquatic: true
+            },
+            { 
+                name: '狼', emoji: '🐺', color: '#78909c', 
+                size: 48, speed: 5.2, xpNeed: 1500, tier: 5,
+                biome: 'GRASS', desc: '群猎高手'
+            },
+            { 
+                name: '狮子', emoji: '🦁', color: '#ffc107', 
+                size: 65, speed: 4.5, xpNeed: 2500, tier: 6,
+                biome: 'DESERT', desc: '草原之王，沙漠加速'
+            },
+            { 
+                name: '北极熊', emoji: '🐻‍❄️', color: '#eceff1', 
+                size: 75, speed: 3.8, xpNeed: 4000, tier: 7,
+                biome: 'SNOW', desc: '冰雪巨人，雪地加速'
+            },
+            { 
+                name: '大象', emoji: '🐘', color: '#78909c', 
+                size: 100, speed: 3.0, xpNeed: 6000, tier: 8,
+                biome: 'GRASS', desc: '陆地最大'
+            },
+            { 
+                name: '巨龙', emoji: '🐉', color: '#c62828', 
+                size: 130, speed: 4.0, xpNeed: 10000, tier: 9,
+                biome: 'GRASS', desc: '传说生物，全地形加速'
+            },
+        ];
+
+        // ==================== 游戏状态 ====================
+        let canvas, ctx, minimapCanvas, minimapCtx;
+        let gameRunning = false;
+        let killCount = 0;
+
+        const player = {
+            x: CONFIG.WORLD_SIZE / 2,
+            y: CONFIG.WORLD_SIZE / 2,
+            angle: 0,
+            targetAngle: 0,
+            speed: 0,
+            size: 15,
+            xp: 0,
+            health: 100,
+            water: 100,
+            tier: 0,
+            invincible: 0,
+            currentBiome: 'GRASS'
+        };
+
+        const mouse = { x: 0, y: 0 };
+        const camera = { x: 0, y: 0 };
+
+        let foods = [];
+        let waters = [];
+        let npcs = [];
+
+        // ==================== 工具函数 ====================
+        function getBiomeAt(x, y) {
+            for (let zone of BIOME_ZONES) {
+                if (x >= zone.x && x < zone.x + zone.width &&
+                    y >= zone.y && y < zone.y + zone.height) {
+                    return zone.biome;
+                }
+            }
+            return 'GRASS';
+        }
+
+        function getSpeedModifier(biome, animal) {
+            const biomeData = BIOMES[biome];
+            let mod = biomeData.speedMod;
+            
+            // 特殊生物加成
+            if (animal.biome === biome) {
+                mod *= 1.15;  // 原生生物群系+15%
+            }
+            
+            if (animal.isAquatic && biome === 'WATER') {
+                mod = BIOMES.WATER.waterSpeedBoost;
+            }
+            
+            if (animal.tier === 9) {  // 龙全地形加速
+                mod = Math.max(mod, 1.1);
+            }
+            
+            return mod;
+        }
+
+        // ==================== 初始化 ====================
+        function init() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            minimapCanvas = document.getElementById('minimap');
+            minimapCtx = minimapCanvas.getContext('2d');
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            document.addEventListener('mousemove', e => {
+                mouse.x = e.clientX;
+                mouse.y = e.clientY;
+            });
+
+            document.getElementById('restartBtn').addEventListener('click', restartGame);
+
+            // 生成进化链UI
+            generateEvolutionChain();
+
+            generateWorld();
+            gameRunning = true;
+            gameLoop();
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function generateEvolutionChain() {
+            const chain = document.getElementById('evolutionChain');
+            chain.innerHTML = '';
+            ANIMALS.forEach((animal, i) => {
+                const item = document.createElement('div');
+                item.className = 'chain-item';
+                item.textContent = animal.emoji;
+                item.id = `chain-${i}`;
+                chain.appendChild(item);
+            });
+            updateEvolutionChain();
+        }
+
+        function updateEvolutionChain() {
+            ANIMALS.forEach((_, i) => {
+                const item = document.getElementById(`chain-${i}`);
+                if (!item) return;
+                item.className = 'chain-item';
+                if (i < player.tier) item.classList.add('completed');
+                if (i === player.tier) item.classList.add('current');
+            });
+        }
+
+        // ==================== 生成世界 ====================
+        function generateWorld() {
+            foods = [];
+            for (let i = 0; i < CONFIG.FOOD_COUNT; i++) {
+                foods.push(createFood());
+            }
+
+            waters = [];
+            for (let i = 0; i < CONFIG.WATER_COUNT; i++) {
+                waters.push({
+                    x: 200 + Math.random() * (CONFIG.WORLD_SIZE - 400),
+                    y: 200 + Math.random() * (CONFIG.WORLD_SIZE - 400),
+                    radius: 50 + Math.random() * 70
+                });
+            }
+
+            npcs = [];
+            for (let i = 0; i < CONFIG.NPC_COUNT; i++) {
+                npcs.push(createNPC());
+            }
+        }
+
+        function createFood() {
+            const x = Math.random() * CONFIG.WORLD_SIZE;
+            const y = Math.random() * CONFIG.WORLD_SIZE;
+            const biome = getBiomeAt(x, y);
+            const colors = BIOMES[biome].foodColor;
+            return {
+                x, y,
+                size: 4 + Math.random() * 5,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                biome
+            };
+        }
+
+        function createNPC(forceNearPlayer = false) {
+            const minTier = Math.max(0, player.tier - 2);
+            const maxTier = Math.min(ANIMALS.length - 1, player.tier + 2);
+            const tier = minTier + Math.floor(Math.random() * (maxTier - minTier + 1));
+            const animal = ANIMALS[tier];
+
+            let x, y;
+            if (forceNearPlayer) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 600 + Math.random() * 400;
+                x = player.x + Math.cos(angle) * dist;
+                y = player.y + Math.sin(angle) * dist;
+                x = Math.max(50, Math.min(CONFIG.WORLD_SIZE - 50, x));
+                y = Math.max(50, Math.min(CONFIG.WORLD_SIZE - 50, y));
+            } else {
+                // 优先在对应生物群系生成
+                if (animal.biome === 'WATER') {
+                    const zone = BIOME_ZONES.find(z => z.biome === 'WATER');
+                    x = zone.x + Math.random() * zone.width;
+                    y = zone.y + Math.random() * zone.height;
+                } else if (animal.biome === 'SNOW') {
+                    const zone = BIOME_ZONES.find(z => z.biome === 'SNOW');
+                    x = zone.x + Math.random() * zone.width;
+                    y = zone.y + Math.random() * zone.height;
+                } else if (animal.biome === 'DESERT') {
+                    const zone = BIOME_ZONES.find(z => z.biome === 'DESERT');
+                    x = zone.x + Math.random() * zone.width;
+                    y = zone.y + Math.random() * zone.height;
+                } else {
+                    x = Math.random() * CONFIG.WORLD_SIZE;
+                    y = Math.random() * CONFIG.WORLD_SIZE;
+                }
+            }
+
+            return {
+                x, y,
+                angle: Math.random() * Math.PI * 2,
+                speed: animal.speed * 0.5,
+                size: animal.size,
+                tier, color: animal.color, emoji: animal.emoji, name: animal.name,
+                biome: animal.biome,
+                isAquatic: animal.isAquatic || false,
+                state: 'wander',
+                stateTimer: 0,
+                targetX: x, targetY: y,
+            };
+        }
+
+        // ==================== 游戏循环 ====================
+        function gameLoop() {
+            if (!gameRunning) return;
+            update();
+            render();
+            renderMinimap();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ==================== 更新逻辑 ====================
+        function update() {
+            updatePlayer();
+            updateWaterSystem();
+            updateNPCs();
+            eatFood();
+            checkEvolution();
+            updateUI();
+            
+            camera.x += (player.x - canvas.width / 2 - camera.x) * 0.1;
+            camera.y += (player.y - canvas.height / 2 - camera.y) * 0.1;
+        }
+
+        function updatePlayer() {
+            const worldMouseX = mouse.x + camera.x;
+            const worldMouseY = mouse.y + camera.y;
+            
+            player.targetAngle = Math.atan2(worldMouseY - player.y, worldMouseX - player.x);
+
+            let angleDiff = player.targetAngle - player.angle;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            player.angle += angleDiff * 0.12;
+
+            const dist = Math.sqrt(Math.pow(worldMouseX - player.x, 2) + Math.pow(worldMouseY - player.y, 2));
+            
+            player.currentBiome = getBiomeAt(player.x, player.y);
+            const animal = ANIMALS[player.tier];
+            const speedMod = getSpeedModifier(player.currentBiome, animal);
+            
+            const targetSpeed = Math.min(dist / 50, 1) * animal.speed * speedMod;
+            player.speed += (targetSpeed - player.speed) * 0.1;
+
+            player.x += Math.cos(player.angle) * player.speed;
+            player.y += Math.sin(player.angle) * player.speed;
+
+            player.x = Math.max(player.size, Math.min(CONFIG.WORLD_SIZE - player.size, player.x));
+            player.y = Math.max(player.size, Math.min(CONFIG.WORLD_SIZE - player.size, player.y));
+
+            if (player.invincible > 0) player.invincible--;
+        }
+
+        function updateWaterSystem() {
+            let drainRate = CONFIG.WATER_DRAIN_RATE;
+            
+            // 沙漠加速水分消耗
+            if (player.currentBiome === 'DESERT') {
+                drainRate *= 1.5;
+            }
+            
+            player.water -= drainRate;
+            
+            let inWater = false;
+            waters.forEach(water => {
+                const dist = Math.sqrt(Math.pow(player.x - water.x, 2) + Math.pow(player.y - water.y, 2));
+                if (dist < water.radius) inWater = true;
+            });
+
+            if (inWater) {
+                player.water = Math.min(100, player.water + CONFIG.WATER_REGEN_RATE);
+            }
+
+            if (player.water <= 0) {
+                player.water = 0;
+                player.health -= CONFIG.HEALTH_DRAIN_RATE;
+            }
+
+            if (player.health <= 0) die();
+        }
+
+        function eatFood() {
+            foods = foods.filter(food => {
+                const dist = Math.sqrt(Math.pow(player.x - food.x, 2) + Math.pow(player.y - food.y, 2));
+                if (dist < player.size + food.size) {
+                    player.xp += food.size * CONFIG.XP_MULTIPLIER;
+                    return false;
+                }
+                return true;
+            });
+
+            while (foods.length < CONFIG.FOOD_COUNT) {
+                foods.push(createFood());
+            }
+        }
+
+        // ==================== NPC AI 智能系统 ====================
+        function updateNPCs() {
+            npcs.forEach((npc, index) => {
+                // 更新 NPC 感知系统
+                updateNPCPerception(npc);
+                
+                // AI 状态决策
+                npc.stateTimer--;
+                if (npc.stateTimer <= 0) {
+                    decideNPCState(npc);
+                    npc.stateTimer = 20 + Math.floor(Math.random() * 40);
+                }
+
+                // 执行当前状态
+                executeNPCState(npc);
+
+                // 应用生物群系速度修正
+                const npcBiome = getBiomeAt(npc.x, npc.y);
+                const npcAnimal = ANIMALS[npc.tier];
+                const speedMod = getSpeedModifier(npcBiome, npcAnimal);
+                
+                npc.x += Math.cos(npc.angle) * npc.speed * speedMod;
+                npc.y += Math.sin(npc.angle) * npc.speed * speedMod;
+
+                handleBoundaries(npc);
+                handlePlayerCollision(npc, index);
+                handleNPCInteractions(npc, index);
+            });
+
+            while (npcs.length < CONFIG.NPC_COUNT) {
+                npcs.push(createNPC(true));
+            }
+        }
+
+        // NPC 感知系统 - 扫描周围威胁和猎物
+        function updateNPCPerception(npc) {
+            const DETECTION_RANGE = 300;
+            
+            npc.nearestThreat = null;
+            npc.nearestThreatDist = Infinity;
+            npc.nearestPrey = null;
+            npc.nearestPreyDist = Infinity;
+            
+            // 检测玩家
+            const distToPlayer = Math.sqrt(Math.pow(player.x - npc.x, 2) + Math.pow(player.y - npc.y, 2));
+            
+            if (distToPlayer < DETECTION_RANGE) {
+                if (player.tier > npc.tier) {
+                    // 玩家是威胁
+                    npc.nearestThreat = { x: player.x, y: player.y, isPlayer: true };
+                    npc.nearestThreatDist = distToPlayer;
+                } else if (player.tier < npc.tier) {
+                    // 玩家是猎物（但优先级较低）
+                    if (distToPlayer < DETECTION_RANGE * 0.6) {
+                        npc.nearestPrey = { x: player.x, y: player.y, isPlayer: true };
+                        npc.nearestPreyDist = distToPlayer;
+                    }
+                }
+            }
+            
+            // 检测其他 NPC
+            npcs.forEach(other => {
+                if (other === npc) return;
+                
+                const dist = Math.sqrt(Math.pow(other.x - npc.x, 2) + Math.pow(other.y - npc.y, 2));
+                if (dist > DETECTION_RANGE) return;
+                
+                if (other.tier > npc.tier && dist < npc.nearestThreatDist) {
+                    // 更高级的是威胁
+                    npc.nearestThreat = { x: other.x, y: other.y, npc: other };
+                    npc.nearestThreatDist = dist;
+                } else if (other.tier < npc.tier && dist < npc.nearestPreyDist) {
+                    // 更低级的是猎物
+                    npc.nearestPrey = { x: other.x, y: other.y, npc: other };
+                    npc.nearestPreyDist = dist;
+                }
+            });
+        }
+
+        // AI 状态决策
+        function decideNPCState(npc) {
+            const FLEE_THRESHOLD = 200;  // 逃跑触发距离
+            const CHASE_THRESHOLD = 180; // 追捕触发距离
+            const IGNORE_CHANCE = 0.4;   // 忽略玩家的概率
+            
+            // 优先级1: 有威胁就逃跑
+            if (npc.nearestThreat && npc.nearestThreatDist < FLEE_THRESHOLD) {
+                npc.state = 'flee';
+                npc.fleeTarget = npc.nearestThreat;
+                return;
+            }
+            
+            // 优先级2: 追捕猎物（但有一定概率忽略）
+            if (npc.nearestPrey && npc.nearestPreyDist < CHASE_THRESHOLD) {
+                // 如果猎物是玩家，有概率忽略（不要一直追玩家）
+                if (npc.nearestPrey.isPlayer) {
+                    if (Math.random() > IGNORE_CHANCE) {
+                        npc.state = 'wander';
+                        setRandomTarget(npc);
+                        return;
+                    }
+                }
+                
+                // 追捕距离限制 - 太远就不追了
+                if (npc.nearestPreyDist < 250) {
+                    npc.state = 'chase';
+                    npc.chaseTarget = npc.nearestPrey;
+                    return;
+                }
+            }
+            
+            // 默认: 游荡
+            npc.state = 'wander';
+            setRandomTarget(npc);
+        }
+
+        // 设置随机游荡目标
+        function setRandomTarget(npc) {
+            npc.targetX = Math.max(100, Math.min(CONFIG.WORLD_SIZE - 100, npc.x + (Math.random() - 0.5) * 500));
+            npc.targetY = Math.max(100, Math.min(CONFIG.WORLD_SIZE - 100, npc.y + (Math.random() - 0.5) * 500));
+        }
+
+        // 执行 NPC 状态
+        function executeNPCState(npc) {
+            let targetAngle;
+            const animal = ANIMALS[npc.tier];
+            
+            switch (npc.state) {
+                case 'wander':
+                    // 游荡状态
+                    targetAngle = Math.atan2(npc.targetY - npc.y, npc.targetX - npc.x);
+                    npc.speed = animal.speed * 0.35;
+                    
+                    // 到达目标点就换新目标
+                    const distToTarget = Math.sqrt(Math.pow(npc.targetX - npc.x, 2) + Math.pow(npc.targetY - npc.y, 2));
+                    if (distToTarget < 50) {
+                        setRandomTarget(npc);
+                    }
+                    break;
+                    
+                case 'chase':
+                    // 追捕状态
+                    if (npc.chaseTarget) {
+                        targetAngle = Math.atan2(npc.chaseTarget.y - npc.y, npc.chaseTarget.x - npc.x);
+                        npc.speed = animal.speed * 0.7;
+                        
+                        // 追捕超时或距离太远就放弃
+                        const chaseDist = Math.sqrt(Math.pow(npc.chaseTarget.x - npc.x, 2) + Math.pow(npc.chaseTarget.y - npc.y, 2));
+                        if (chaseDist > 300) {
+                            npc.state = 'wander';
+                            setRandomTarget(npc);
+                        }
+                    } else {
+                        npc.state = 'wander';
+                        setRandomTarget(npc);
+                    }
+                    break;
+                    
+                case 'flee':
+                    // 逃跑状态
+                    if (npc.fleeTarget) {
+                        // 远离威胁方向
+                        targetAngle = Math.atan2(npc.y - npc.fleeTarget.y, npc.x - npc.fleeTarget.x);
+                        npc.speed = animal.speed * 0.9; // 逃跑时全速
+                        
+                        // 添加一些随机偏移，让逃跑更自然
+                        targetAngle += (Math.random() - 0.5) * 0.5;
+                        
+                        // 已经跑远了就恢复正常
+                        if (npc.nearestThreatDist > 350) {
+                            npc.state = 'wander';
+                            setRandomTarget(npc);
+                        }
+                    } else {
+                        npc.state = 'wander';
+                        setRandomTarget(npc);
+                    }
+                    break;
+                    
+                default:
+                    targetAngle = npc.angle;
+                    npc.speed = animal.speed * 0.3;
+            }
+            
+            // 平滑转向
+            let angleDiff = targetAngle - npc.angle;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            
+            // 逃跑时转向更快
+            const turnRate = npc.state === 'flee' ? 0.12 : 0.06;
+            npc.angle += angleDiff * turnRate;
+        }
+
+        function handleBoundaries(npc) {
+            const m = 100;
+            if (npc.x < m) { npc.angle = 0; npc.x = m; }
+            if (npc.x > CONFIG.WORLD_SIZE - m) { npc.angle = Math.PI; npc.x = CONFIG.WORLD_SIZE - m; }
+            if (npc.y < m) { npc.angle = Math.PI / 2; npc.y = m; }
+            if (npc.y > CONFIG.WORLD_SIZE - m) { npc.angle = -Math.PI / 2; npc.y = CONFIG.WORLD_SIZE - m; }
+        }
+
+        function handlePlayerCollision(npc, index) {
+            const dist = Math.sqrt(Math.pow(player.x - npc.x, 2) + Math.pow(player.y - npc.y, 2));
+
+            if (dist < player.size + npc.size) {
+                if (player.tier > npc.tier) {
+                    const xpGain = (npc.tier + 1) * 35 + npc.size;
+                    player.xp += xpGain;
+                    killCount++;
+                    showKillMessage(`吃掉 ${npc.emoji} ${npc.name} (+${Math.round(xpGain)}XP)`);
+                    npcs[index] = createNPC(true);
+                    checkEvolution();
+                } else if (npc.tier > player.tier && player.invincible <= 0) {
+                    const damage = (npc.tier - player.tier) * 8 + 10;
+                    player.health -= damage;
+                    player.invincible = 40;
+                    const pushAngle = Math.atan2(player.y - npc.y, player.x - npc.x);
+                    player.x += Math.cos(pushAngle) * 20;
+                    player.y += Math.sin(pushAngle) * 20;
+                    showKillMessage(`${npc.emoji} 攻击了你! (-${Math.round(damage)}HP)`, '#e74c3c');
+                }
+            }
+        }
+
+        function handleNPCInteractions(npc, index) {
+            for (let i = 0; i < npcs.length; i++) {
+                if (i === index) continue;
+                const other = npcs[i];
+                const dist = Math.sqrt(Math.pow(npc.x - other.x, 2) + Math.pow(npc.y - other.y, 2));
+                if (dist < npc.size + other.size) {
+                    if (npc.tier > other.tier + 1) {
+                        npcs[i] = createNPC(false);
+                    } else if (other.tier > npc.tier + 1) {
+                        npcs[index] = createNPC(false);
+                        return;
+                    }
+                }
+            }
+        }
+
+        function showKillMessage(msg, color = '#2ecc71') {
+            const feed = document.getElementById('killFeed');
+            const div = document.createElement('div');
+            div.className = 'kill-msg';
+            div.style.borderLeft = `3px solid ${color}`;
+            div.textContent = msg;
+            feed.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        // ==================== 进化系统 ====================
+        function checkEvolution() {
+            const nextTier = player.tier + 1;
+            if (nextTier < ANIMALS.length && player.xp >= ANIMALS[nextTier].xpNeed) {
+                evolve(nextTier);
+            }
+        }
+
+        function evolve(newTier) {
+            player.tier = newTier;
+            const animal = ANIMALS[newTier];
+            player.size = animal.size;
+            player.health = Math.min(100, player.health + 25);
+
+            const notify = document.getElementById('evolveNotify');
+            document.getElementById('evolveEmoji').textContent = animal.emoji;
+            document.getElementById('evolveName').textContent = `进化为 ${animal.name} - ${animal.desc}`;
+            notify.style.display = 'block';
+            setTimeout(() => notify.style.display = 'none', 2500);
+            
+            showKillMessage(`🎉 进化为 ${animal.emoji} ${animal.name}!`, '#f1c40f');
+            updateEvolutionChain();
+        }
+
+        // ==================== UI ====================
+        function updateUI() {
+            const animal = ANIMALS[player.tier];
+            document.getElementById('animalEmoji').textContent = animal.emoji;
+            document.getElementById('animalName').textContent = animal.name;
+            document.getElementById('healthText').textContent = Math.round(player.health) + '%';
+            document.getElementById('healthFill').style.width = player.health + '%';
+            document.getElementById('waterText').textContent = Math.round(player.water) + '%';
+            document.getElementById('waterFill').style.width = player.water + '%';
+            document.getElementById('sizeText').textContent = Math.round(player.size);
+            document.getElementById('killCount').textContent = killCount;
+
+            const nextTier = player.tier + 1;
+            if (nextTier < ANIMALS.length) {
+                const prevXP = ANIMALS[player.tier].xpNeed;
+                const nextXP = ANIMALS[nextTier].xpNeed;
+                const progress = ((player.xp - prevXP) / (nextXP - prevXP)) * 100;
+                document.getElementById('xpFill').style.width = Math.min(100, progress) + '%';
+                document.getElementById('xpText').textContent = `${Math.round(player.xp)}/${nextXP}`;
+                document.getElementById('nextAnimal').textContent = ANIMALS[nextTier].emoji;
+                document.getElementById('nextName').textContent = ANIMALS[nextTier].name;
+            } else {
+                document.getElementById('xpFill').style.width = '100%';
+                document.getElementById('xpText').textContent = 'MAX';
+                document.getElementById('nextAnimal').textContent = '👑';
+                document.getElementById('nextName').textContent = '最强!';
+            }
+
+            // 生物群系
+            const biome = BIOMES[player.currentBiome];
+            document.getElementById('biomeName').textContent = biome.name;
+            document.getElementById('biomeEffect').textContent = biome.effect;
+        }
+
+        // ==================== 渲染 ====================
+        function render() {
+            // 先填充背景色
+            renderBiomeBackground();
+            
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+
+            drawBiomeZones();
+            drawGrid();
+            drawWaters();
+            drawFoods();
+            drawNPCs();
+            drawPlayer();
+
+            ctx.restore();
+        }
+
+        function renderBiomeBackground() {
+            const biome = BIOMES[player.currentBiome];
+            ctx.fillStyle = biome.color;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function drawBiomeZones() {
+            BIOME_ZONES.forEach(zone => {
+                const biome = BIOMES[zone.biome];
+                ctx.fillStyle = biome.color + '80';  // 半透明
+                ctx.fillRect(zone.x, zone.y, zone.width, zone.height);
+                
+                // 边界线
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(zone.x, zone.y, zone.width, zone.height);
+                
+                // 区域标签
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(biome.name, zone.x + zone.width / 2, zone.y + 40);
+            });
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+            ctx.lineWidth = 1;
+            const gridSize = 100;
+            for (let x = 0; x <= CONFIG.WORLD_SIZE; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, CONFIG.WORLD_SIZE);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= CONFIG.WORLD_SIZE; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(CONFIG.WORLD_SIZE, y);
+                ctx.stroke();
+            }
+            
+            ctx.strokeStyle = 'rgba(255,0,0,0.3)';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(0, 0, CONFIG.WORLD_SIZE, CONFIG.WORLD_SIZE);
+        }
+
+        function drawWaters() {
+            waters.forEach(water => {
+                if (!isOnScreen(water.x, water.y, water.radius)) return;
+                
+                const gradient = ctx.createRadialGradient(water.x, water.y, 0, water.x, water.y, water.radius);
+                gradient.addColorStop(0, 'rgba(33, 150, 243, 0.7)');
+                gradient.addColorStop(0.7, 'rgba(33, 150, 243, 0.5)');
+                gradient.addColorStop(1, 'rgba(33, 150, 243, 0.2)');
+
+                ctx.beginPath();
+                ctx.arc(water.x, water.y, water.radius, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.lineWidth = 2;
+                const wave = Math.sin(Date.now() * 0.003) * 5;
+                ctx.beginPath();
+                ctx.arc(water.x, water.y, water.radius * 0.6 + wave, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+        }
+
+        function drawFoods() {
+            foods.forEach(food => {
+                if (isOnScreen(food.x, food.y, food.size)) {
+                    ctx.beginPath();
+                    ctx.arc(food.x, food.y, food.size, 0, Math.PI * 2);
+                    ctx.fillStyle = food.color;
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(food.x - food.size * 0.2, food.y - food.size * 0.2, food.size * 0.2, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                    ctx.fill();
+                }
+            });
+        }
+
+        function drawNPCs() {
+            npcs.forEach(npc => {
+                if (isOnScreen(npc.x, npc.y, npc.size)) {
+                    let outlineColor = 'rgba(255,255,255,0.3)';
+                    let glowColor = null;
+                    
+                    // 根据与玩家的等级关系设置颜色
+                    if (npc.tier < player.tier) {
+                        outlineColor = 'rgba(46, 204, 113, 0.9)';
+                        glowColor = 'rgba(46, 204, 113, 0.2)';
+                    } else if (npc.tier > player.tier) {
+                        outlineColor = 'rgba(231, 76, 60, 0.9)';
+                        glowColor = 'rgba(231, 76, 60, 0.2)';
+                    } else {
+                        outlineColor = 'rgba(241, 196, 15, 0.7)';
+                    }
+
+                    // 根据 AI 状态添加特殊效果
+                    if (npc.state === 'flee') {
+                        // 逃跑状态 - 橙色警告
+                        const pulse = Math.sin(Date.now() * 0.015) * 0.3 + 0.5;
+                        glowColor = `rgba(255, 152, 0, ${pulse})`;
+                        outlineColor = 'rgba(255, 152, 0, 0.9)';
+                    } else if (npc.state === 'chase') {
+                        // 追捕状态 - 红色脉动
+                        const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.5;
+                        glowColor = `rgba(231, 76, 60, ${pulse})`;
+                    }
+
+                    drawAnimal(npc.x, npc.y, npc.size, npc.angle, npc.color, outlineColor, glowColor, npc.emoji);
+                    
+                    // 绘制状态指示器
+                    drawNPCStateIndicator(npc);
+                }
+            });
+        }
+        
+        // 绘制 NPC 状态指示器
+        function drawNPCStateIndicator(npc) {
+            const indicatorY = npc.y - npc.size - 25;
+            
+            if (npc.state === 'chase' && npc.chaseTarget) {
+                // 追捕状态 - 显示目标方向箭头
+                const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+                ctx.fillStyle = `rgba(231, 76, 60, ${pulse})`;
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('⚠️', npc.x, indicatorY);
+                
+                // 绘制追捕目标指示线
+                if (npc.chaseTarget) {
+                    ctx.beginPath();
+                    ctx.moveTo(npc.x, npc.y);
+                    ctx.lineTo(npc.chaseTarget.x, npc.chaseTarget.y);
+                    ctx.strokeStyle = 'rgba(231, 76, 60, 0.2)';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            } else if (npc.state === 'flee') {
+                // 逃跑状态 - 显示感叹号
+                const pulse = Math.sin(Date.now() * 0.02) * 0.3 + 0.7;
+                ctx.fillStyle = `rgba(255, 152, 0, ${pulse})`;
+                ctx.font = 'bold 18px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('❗', npc.x, indicatorY);
+            }
+        }
+
+        function drawPlayer() {
+            if (player.invincible > 0 && Math.floor(player.invincible / 3) % 2 === 0) return;
+
+            const animal = ANIMALS[player.tier];
+            drawAnimal(player.x, player.y, player.size, player.angle, animal.color, 'rgba(255,255,255,0.8)', null, animal.emoji);
+
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size + 8, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        function drawAnimal(x, y, size, angle, color, outlineColor, glowColor, emoji) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+
+            if (glowColor) {
+                ctx.beginPath();
+                ctx.arc(0, 0, size + 12, 0, Math.PI * 2);
+                ctx.fillStyle = glowColor;
+                ctx.fill();
+            }
+
+            ctx.beginPath();
+            ctx.ellipse(3, 3, size, size * 0.8, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(0, 0, size, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+
+            ctx.strokeStyle = outlineColor;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(-size * 0.55, -size * 0.55, size * 0.3, 0, Math.PI * 2);
+            ctx.arc(size * 0.55, -size * 0.55, size * 0.3, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = outlineColor;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(size * 0.25, -size * 0.15, size * 0.12, 0, Math.PI * 2);
+            ctx.arc(size * 0.25, size * 0.15, size * 0.12, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(size * 0.3, -size * 0.15, size * 0.05, 0, Math.PI * 2);
+            ctx.arc(size * 0.3, size * 0.15, size * 0.05, 0, Math.PI * 2);
+            ctx.fillStyle = '#000';
+            ctx.fill();
+
+            ctx.restore();
+
+            ctx.font = `${size * 0.6}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText(emoji, x, y - size - 12);
+        }
+
+        function isOnScreen(x, y, size) {
+            return x + size > camera.x && x - size < camera.x + canvas.width &&
+                   y + size > camera.y && y - size < camera.y + canvas.height;
+        }
+
+        // ==================== 小地图 ====================
+        function renderMinimap() {
+            const scale = 140 / CONFIG.WORLD_SIZE;
+            minimapCtx.fillStyle = '#1a1a2e';
+            minimapCtx.fillRect(0, 0, 140, 140);
+
+            // 生物群系
+            BIOME_ZONES.forEach(zone => {
+                const biome = BIOMES[zone.biome];
+                minimapCtx.fillStyle = biome.color + '80';
+                minimapCtx.fillRect(zone.x * scale, zone.y * scale, zone.width * scale, zone.height * scale);
+            });
+
+            // 水坑
+            minimapCtx.fillStyle = 'rgba(33,150,243,0.5)';
+            waters.forEach(water => {
+                minimapCtx.beginPath();
+                minimapCtx.arc(water.x * scale, water.y * scale, Math.max(2, water.radius * scale), 0, Math.PI * 2);
+                minimapCtx.fill();
+            });
+
+            // NPC
+            npcs.forEach(npc => {
+                minimapCtx.fillStyle = npc.tier < player.tier ? '#2ecc71' : npc.tier > player.tier ? '#e74c3c' : '#f1c40f';
+                minimapCtx.beginPath();
+                minimapCtx.arc(npc.x * scale, npc.y * scale, 2, 0, Math.PI * 2);
+                minimapCtx.fill();
+            });
+
+            // 玩家
+            minimapCtx.fillStyle = '#fff';
+            minimapCtx.beginPath();
+            minimapCtx.arc(player.x * scale, player.y * scale, 4, 0, Math.PI * 2);
+            minimapCtx.fill();
+
+            // 视野
+            minimapCtx.strokeStyle = 'rgba(255,255,255,0.4)';
+            minimapCtx.lineWidth = 1;
+            minimapCtx.strokeRect(camera.x * scale, camera.y * scale, canvas.width * scale, canvas.height * scale);
+        }
+
+        // ==================== 死亡/重开 ====================
+        function die() {
+            gameRunning = false;
+            document.getElementById('finalAnimal').textContent = ANIMALS[player.tier].name;
+            document.getElementById('finalScore').textContent = Math.round(player.xp);
+            document.getElementById('finalKills').textContent = killCount;
+            document.getElementById('deathScreen').style.display = 'flex';
+        }
+
+        function restartGame() {
+            Object.assign(player, {
+                x: CONFIG.WORLD_SIZE / 2,
+                y: CONFIG.WORLD_SIZE / 2,
+                tier: 0, xp: 0, health: 100, water: 100,
+                size: ANIMALS[0].size, speed: 0, invincible: 60
+            });
+            killCount = 0;
+            generateWorld();
+            generateEvolutionChain();
+            document.getElementById('deathScreen').style.display = 'none';
+            gameRunning = true;
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
