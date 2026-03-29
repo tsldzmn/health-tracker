@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { foodAPI } from '../services/api';
 import { format } from 'date-fns';
 
@@ -14,6 +14,7 @@ export default function FoodLog() {
   const [recognitionSource, setRecognitionSource] = useState('');
   const [previewImage, setPreviewImage] = useState(null);
   const fileInputRef = useRef(null);
+  const searchTimerRef = useRef(null);
 
   const mealTypes = [
     { id: 'breakfast', label: '🌅 早餐' },
@@ -22,22 +23,33 @@ export default function FoodLog() {
     { id: 'snack', label: '🍎 加餐' }
   ];
 
-  useEffect(() => {
-    if (searchKeyword.length >= 1) {
-      searchFood();
-    } else {
+  const searchFood = useCallback(async (keyword) => {
+    if (!keyword || keyword.length < 1) {
       setSearchResults([]);
+      return;
     }
-  }, [searchKeyword]);
-
-  const searchFood = async () => {
     try {
-      const results = await foodAPI.searchFood(searchKeyword);
+      const results = await foodAPI.searchFood(keyword);
       setSearchResults(results);
     } catch (err) {
       console.error(err);
     }
+  }, []);
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchKeyword(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      searchFood(value);
+    }, 300);
   };
+
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, []);
 
   const addFoodFromSearch = (food) => {
     setSelectedFoods(prev => [...prev, {
@@ -182,7 +194,7 @@ export default function FoodLog() {
             type="text"
             placeholder="输入食物名称，如：米饭、鸡蛋"
             value={searchKeyword}
-            onChange={(e) => setSearchKeyword(e.target.value)}
+            onChange={handleSearchChange}
           />
           {searchResults.length > 0 && (
             <div className="food-search-results">

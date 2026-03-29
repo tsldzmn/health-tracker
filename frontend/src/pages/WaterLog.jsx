@@ -153,7 +153,7 @@ export default function WaterLog() {
                 <div key={i} className="food-item" style={{ border: 'none', borderBottom: i < waterData.entries.length - 1 ? '1px solid var(--border-color)' : 'none' }}>
                   <div className="food-info">
                     <div className="food-name">💧 {entry.amount}ml</div>
-                    <div className="food-detail">{format(new Date(entry.time), 'HH:mm')}</div>
+                    <div className="food-detail">{entry.time ? format(new Date(entry.time), 'HH:mm') : format(new Date(entry.createdAt || Date.now()), 'HH:mm')}</div>
                   </div>
                 </div>
               ))}

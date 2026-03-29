@@ -1047,3 +1047,21 @@ body {
     gap: 16px;
   }
 }
+
+html, body {
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-container {
+  padding-top: env(safe-area-inset-top);
+}
+
+.btn, .nav-item, .meal-option, .glass-card {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+input, select, textarea {
+  font-size: 16px !important;
+}

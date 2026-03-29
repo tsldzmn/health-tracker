@@ -170,7 +170,7 @@ export default function Dashboard() {
                 </div>
               </div>
               {entry ? (
-                entry.foods.map((food, i) => (
+                (entry.foods || []).map((food, i) => (
                   <div key={i} className="food-item">
                     <div className="food-info">
                       <div className="food-name">{food.name}</div>
