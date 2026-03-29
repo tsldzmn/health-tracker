@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const { db } = require('../config/db');
 const auth = require('../middleware/auth');
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || 'health_tracker_default_secret_2024';
 
 router.post('/register', async (req, res) => {
   try {
@@ -24,8 +25,7 @@ router.post('/register', async (req, res) => {
       achievements: [], points: 0, streakDays: 0,
       createdAt: new Date(), updatedAt: new Date()
     });
-    const jwtSecret = process.env.JWT_SECRET || 'default_secret';
-    const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: '30d' });
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '30d' });
     res.status(201).json({
       token,
       user: { id: user._id, username: user.username, email: user.email, profile: user.profile, dailyGoals: user.dailyGoals, points: user.points, streakDays: user.streakDays, isAdmin: user.isAdmin }
@@ -55,8 +55,7 @@ router.post('/login', async (req, res) => {
     if (!user.isActive) {
       return res.status(403).json({ message: '账号已被禁用' });
     }
-    const jwtSecret = process.env.JWT_SECRET || 'default_secret';
-    const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: '30d' });
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '30d' });
     res.json({
       token,
       user: { id: user._id, username: user.username, email: user.email, profile: user.profile, dailyGoals: user.dailyGoals, points: user.points, streakDays: user.streakDays, achievements: user.achievements, isAdmin: user.isAdmin }
