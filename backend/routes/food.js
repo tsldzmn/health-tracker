@@ -1,5 +1,6 @@
 const express = require('express');
-const { db } = require('../config/db');
+const FoodEntry = require('../models/FoodEntry');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
@@ -22,48 +23,42 @@ router.post('/', auth, async (req, res) => {
     const entryDate = date ? new Date(date) : new Date();
     entryDate.setHours(0, 0, 0, 0);
 
-    const totalCalories = foods.reduce((sum, f) => sum + (f.calories || 0), 0);
-    const totalProtein = foods.reduce((sum, f) => sum + (f.protein || 0), 0);
-    const totalCarbs = foods.reduce((sum, f) => sum + (f.carbs || 0), 0);
-    const totalFat = foods.reduce((sum, f) => sum + (f.fat || 0), 0);
-
-    const entry = await db.foodEntries.insert({
-      userId: req.user._id,
+    const entry = new FoodEntry({
+      user: req.user._id,
       date: entryDate,
-      mealType, foods, notes: notes || '',
-      totalCalories, totalProtein, totalCarbs, totalFat,
-      createdAt: new Date()
+      mealType,
+      foods,
+      notes: notes || ''
     });
+    await entry.save();
 
-    const points = (req.user.points || 0) + 5;
-    let streakDays = req.user.streakDays || 0;
+    req.user.points = (req.user.points || 0) + 5;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (!req.user.lastCheckIn || new Date(req.user.lastCheckIn) < today) {
+    if (!req.user.lastCheckIn || req.user.lastCheckIn < today) {
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      if (req.user.lastCheckIn && new Date(req.user.lastCheckIn) >= yesterday) {
-        streakDays += 1;
+      if (req.user.lastCheckIn && req.user.lastCheckIn >= yesterday) {
+        req.user.streakDays = (req.user.streakDays || 0) + 1;
       } else {
-        streakDays = 1;
+        req.user.streakDays = 1;
       }
+      req.user.lastCheckIn = new Date();
     }
 
-    const totalMeals = await db.foodEntries.count({ userId: req.user._id });
-    let achievements = req.user.achievements || [];
-    if (totalMeals === 1 && !achievements.find(a => a.id === 'first_meal')) {
-      achievements.push({ ...ACHIEVEMENTS[0], unlockedAt: new Date() });
+    const totalMeals = await FoodEntry.countDocuments({ user: req.user._id });
+    if (totalMeals === 1 && !req.user.achievements?.find(a => a.id === 'first_meal')) {
+      req.user.achievements = req.user.achievements || [];
+      req.user.achievements.push({ ...ACHIEVEMENTS[0], unlockedAt: new Date() });
     }
-    if (streakDays >= 7 && !achievements.find(a => a.id === 'week_streak')) {
-      achievements.push({ ...ACHIEVEMENTS[1], unlockedAt: new Date() });
+    if (req.user.streakDays >= 7 && !req.user.achievements?.find(a => a.id === 'week_streak')) {
+      req.user.achievements.push({ ...ACHIEVEMENTS[1], unlockedAt: new Date() });
     }
 
-    await db.users.update({ _id: req.user._id }, {
-      $set: { points, streakDays, lastCheckIn: new Date(), achievements, updatedAt: new Date() }
-    });
-
+    await req.user.save();
     res.status(201).json(entry);
   } catch (error) {
+    console.error('添加食物记录失败:', error);
     res.status(500).json({ message: '记录失败', error: error.message });
   }
 });
@@ -76,17 +71,15 @@ router.get('/daily', auth, async (req, res) => {
     const nextDay = new Date(date);
     nextDay.setDate(nextDay.getDate() + 1);
 
-    const entries = await db.foodEntries.find({
-      userId: req.user._id,
+    const entries = await FoodEntry.find({
+      user: req.user._id,
       date: { $gte: date, $lt: nextDay }
-    });
+    }).sort({ createdAt: 1 });
 
-    entries.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
-    const totalCalories = entries.reduce((sum, e) => sum + e.totalCalories, 0);
-    const totalProtein = entries.reduce((sum, e) => sum + e.totalProtein, 0);
-    const totalCarbs = entries.reduce((sum, e) => sum + e.totalCarbs, 0);
-    const totalFat = entries.reduce((sum, e) => sum + e.totalFat, 0);
+    const totalCalories = entries.reduce((sum, e) => sum + (e.totalCalories || 0), 0);
+    const totalProtein = entries.reduce((sum, e) => sum + (e.totalProtein || 0), 0);
+    const totalCarbs = entries.reduce((sum, e) => sum + (e.totalCarbs || 0), 0);
+    const totalFat = entries.reduce((sum, e) => sum + (e.totalFat || 0), 0);
 
     res.json({
       date: dateStr,
@@ -103,25 +96,28 @@ router.get('/history', auth, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 7;
+    const skip = (page - 1) * limit;
 
-    const allEntries = await db.foodEntries.find({ userId: req.user._id });
-    allEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const entries = await FoodEntry.find({ user: req.user._id })
+      .sort({ date: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await FoodEntry.countDocuments({ user: req.user._id });
 
     const grouped = {};
-    allEntries.forEach(entry => {
-      const key = new Date(entry.date).toISOString().split('T')[0];
+    entries.forEach(entry => {
+      const key = entry.date.toISOString().split('T')[0];
       if (!grouped[key]) grouped[key] = { date: key, entries: [], totalCalories: 0 };
       grouped[key].entries.push(entry);
-      grouped[key].totalCalories += entry.totalCalories;
+      grouped[key].totalCalories += entry.totalCalories || 0;
     });
 
-    const days = Object.values(grouped).slice((page - 1) * limit, page * limit);
-
     res.json({
-      days,
-      total: allEntries.length,
+      days: Object.values(grouped),
+      total,
       page,
-      pages: Math.ceil(Object.keys(grouped).length / limit)
+      pages: Math.ceil(total / limit)
     });
   } catch (error) {
     res.status(500).json({ message: '获取失败', error: error.message });
@@ -130,9 +126,8 @@ router.get('/history', auth, async (req, res) => {
 
 router.delete('/:id', auth, async (req, res) => {
   try {
-    const entry = await db.foodEntries.findOne({ _id: req.params.id, userId: req.user._id });
+    const entry = await FoodEntry.findOneAndDelete({ _id: req.params.id, user: req.user._id });
     if (!entry) return res.status(404).json({ message: '记录不存在' });
-    await db.foodEntries.remove({ _id: req.params.id });
     res.json({ message: '删除成功' });
   } catch (error) {
     res.status(500).json({ message: '删除失败', error: error.message });

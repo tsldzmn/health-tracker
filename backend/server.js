@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
-const { initDatabase, db } = require('./config/db');
+const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const foodRoutes = require('./routes/food');
 const waterRoutes = require('./routes/water');
@@ -16,17 +16,12 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`, req.body || '');
+  console.log(`${req.method} ${req.path}`);
   next();
 });
 
-app.get('/api/health', async (req, res) => {
-  try {
-    const userCount = await db.users.count({});
-    res.json({ status: 'ok', users: userCount, port: process.env.PORT || 5000 });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
 app.use('/api/auth', authRoutes);
@@ -54,15 +49,10 @@ app.use((error, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 async function start() {
-  try {
-    await initDatabase();
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`服务器已启动: http://localhost:${PORT}`);
-    });
-  } catch (error) {
-    console.error('启动失败:', error);
-    process.exit(1);
-  }
+  await connectDB();
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`服务器已启动: http://localhost:${PORT}`);
+  });
 }
 
 start();

@@ -260,8 +260,8 @@ export default function FoodLog() {
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <span className="chip chip-blue">🤖 AI识别结果</span>
-                  {recognitionSource === 'baidu' && <span className="chip chip-green">百度AI</span>}
-                  {recognitionSource === 'mock' && <span className="chip chip-orange">模拟数据</span>}
+                  {recognitionSource === 'deepseek' && <span className="chip chip-green">DeepSeek</span>}
+                  {recognitionSource === 'fallback' && <span className="chip chip-orange">参考数据</span>}
                 </div>
                 {recognizedFoods.map((food, i) => (
                   <div

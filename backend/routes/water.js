@@ -1,5 +1,5 @@
 const express = require('express');
-const { db } = require('../config/db');
+const WaterEntry = require('../models/WaterEntry');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
@@ -9,16 +9,15 @@ router.post('/', auth, async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const entry = await db.waterEntries.insert({
-      userId: req.user._id,
+    const entry = new WaterEntry({
+      user: req.user._id,
       date: today,
-      amount,
-      time: new Date(),
-      createdAt: new Date()
+      amount
     });
+    await entry.save();
 
-    const points = (req.user.points || 0) + 2;
-    await db.users.update({ _id: req.user._id }, { $set: { points, updatedAt: new Date() } });
+    req.user.points = (req.user.points || 0) + 2;
+    await req.user.save();
 
     const totalToday = await getTotalWater(req.user._id, today);
     res.status(201).json({
@@ -40,11 +39,10 @@ router.get('/daily', auth, async (req, res) => {
     const nextDay = new Date(date);
     nextDay.setDate(nextDay.getDate() + 1);
 
-    const entries = await db.waterEntries.find({
-      userId: req.user._id,
+    const entries = await WaterEntry.find({
+      user: req.user._id,
       date: { $gte: date, $lt: nextDay }
-    });
-    entries.sort((a, b) => new Date(a.time) - new Date(b.time));
+    }).sort({ time: 1 });
 
     const total = entries.reduce((sum, e) => sum + e.amount, 0);
 
@@ -67,14 +65,14 @@ router.get('/history', auth, async (req, res) => {
     startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
 
-    const entries = await db.waterEntries.find({
-      userId: req.user._id,
+    const entries = await WaterEntry.find({
+      user: req.user._id,
       date: { $gte: startDate }
-    });
+    }).sort({ date: 1 });
 
     const grouped = {};
     entries.forEach(entry => {
-      const key = new Date(entry.date).toISOString().split('T')[0];
+      const key = entry.date.toISOString().split('T')[0];
       if (!grouped[key]) grouped[key] = { date: key, total: 0, entries: [] };
       grouped[key].total += entry.amount;
       grouped[key].entries.push(entry);
@@ -92,8 +90,8 @@ router.get('/history', auth, async (req, res) => {
 async function getTotalWater(userId, date) {
   const nextDay = new Date(date);
   nextDay.setDate(nextDay.getDate() + 1);
-  const entries = await db.waterEntries.find({
-    userId,
+  const entries = await WaterEntry.find({
+    user: userId,
     date: { $gte: date, $lt: nextDay }
   });
   return entries.reduce((sum, e) => sum + e.amount, 0);

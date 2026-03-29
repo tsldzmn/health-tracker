@@ -1,158 +1,120 @@
 const axios = require('axios');
 
-let cachedToken = null;
-let tokenExpireTime = 0;
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-ffef02f36dcd4b599691605d35135215';
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
 
-async function getAccessToken() {
-  const now = Date.now();
-  if (cachedToken && now < tokenExpireTime) {
-    return cachedToken;
-  }
-
-  const { BAIDU_API_KEY, BAIDU_SECRET_KEY } = process.env;
-  if (!BAIDU_API_KEY || !BAIDU_SECRET_KEY || BAIDU_API_KEY === 'your_api_key') {
-    return null;
-  }
-
-  try {
-    const res = await axios.post(
-      'https://aip.baidubce.com/oauth/2.0/token',
-      null,
-      {
-        params: {
-          grant_type: 'client_credentials',
-          client_id: BAIDU_API_KEY,
-          client_secret: BAIDU_SECRET_KEY
-        }
-      }
-    );
-    cachedToken = res.data.access_token;
-    tokenExpireTime = now + (res.data.expires_in - 60) * 1000;
-    return cachedToken;
-  } catch (error) {
-    console.error('获取百度AI Token失败:', error.message);
-    return null;
-  }
-}
+const FOOD_DATABASE = {
+  '米饭': { calories: 116, protein: 2.6, carbs: 25.9, fat: 0.3 },
+  '面条': { calories: 137, protein: 4.5, carbs: 25.2, fat: 2.1 },
+  '馒头': { calories: 223, protein: 7, carbs: 44.2, fat: 1.1 },
+  '面包': { calories: 312, protein: 8.3, carbs: 58.6, fat: 5.1 },
+  '鸡蛋': { calories: 144, protein: 13.3, carbs: 2.8, fat: 8.8 },
+  '牛奶': { calories: 54, protein: 3, carbs: 3.4, fat: 3.2 },
+  '鸡胸肉': { calories: 133, protein: 31, carbs: 0, fat: 1.2 },
+  '牛肉': { calories: 125, protein: 19.9, carbs: 2, fat: 4.2 },
+  '猪肉': { calories: 143, protein: 20.3, carbs: 0, fat: 6.2 },
+  '鱼肉': { calories: 113, protein: 16.6, carbs: 0, fat: 5.2 },
+  '虾': { calories: 87, protein: 18.6, carbs: 0, fat: 0.8 },
+  '豆腐': { calories: 73, protein: 8.1, carbs: 1.8, fat: 3.7 },
+  '西兰花': { calories: 36, protein: 3.7, carbs: 7.2, fat: 0.4 },
+  '番茄': { calories: 15, protein: 0.9, carbs: 3.3, fat: 0.2 },
+  '苹果': { calories: 53, protein: 0.2, carbs: 13.5, fat: 0.2 },
+  '香蕉': { calories: 93, protein: 1.4, carbs: 22, fat: 0.2 }
+};
 
 async function recognizeFood(imageBase64) {
-  const token = await getAccessToken();
-  if (!token) {
-    return recognizeFoodFallback(imageBase64);
-  }
-
   try {
-    const res = await axios.post(
-      `https://aip.baidubce.com/rest/2.0/image-classify/v2/dish?access_token=${token}`,
-      `image=${encodeURIComponent(imageBase64)}&top_num=5`,
-      {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      }
-    );
+    const response = await axios.post(DEEPSEEK_API_URL, {
+      model: 'deepseek-chat',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: '识别图中所有食物，返回JSON数组，格式：[{"name":"食物名","amount":克数,"calories":总热量,"protein":蛋白质g,"carbs":碳水g,"fat":脂肪g}]。只返回JSON，不要其他文字。'
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:image/jpeg;base64,${imageBase64}`
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 500
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+      },
+      timeout: 30000
+    });
 
-    if (res.data.result && res.data.result.length > 0) {
-      return {
-        success: true,
-        source: 'baidu',
-        results: res.data.result.map(item => ({
-          name: item.name,
-          probability: item.probability,
-          calorie: item.calorie || estimateCalorie(item.name)
-        }))
-      };
+    const content = response.data.choices[0].message.content.trim();
+    let foods = [];
+
+    try {
+      const jsonMatch = content.match(/\[.*\]/s);
+      if (jsonMatch) {
+        foods = JSON.parse(jsonMatch[0]);
+      }
+    } catch (parseError) {
+      console.error('JSON解析失败:', content);
+      return fallbackRecognition();
     }
 
-    return await recognizeGeneral(imageBase64, token);
-  } catch (error) {
-    console.error('百度食物识别失败:', error.message);
-    return recognizeFoodFallback(imageBase64);
-  }
-}
-
-async function recognizeGeneral(imageBase64, token) {
-  try {
-    const res = await axios.post(
-      `https://aip.baidubce.com/rest/2.0/image-classify/v2/advanced_general?access_token=${token}`,
-      `image=${encodeURIComponent(imageBase64)}`,
-      {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-      }
-    );
-
-    if (res.data.result) {
-      const foodResults = res.data.result.filter(item =>
-        isFoodRelated(item.keyword)
-      );
-
-      return {
-        success: true,
-        source: 'baidu-general',
-        results: foodResults.map(item => ({
-          name: item.keyword,
-          probability: item.score,
-          calorie: estimateCalorie(item.keyword)
-        }))
-      };
+    if (!Array.isArray(foods) || foods.length === 0) {
+      return fallbackRecognition();
     }
 
-    return recognizeFoodFallback(imageBase64);
+    const results = foods.map(food => ({
+      name: food.name || '未知食物',
+      amount: food.amount || 100,
+      calories: food.calories || 100,
+      protein: food.protein || 0,
+      carbs: food.carbs || 0,
+      fat: food.fat || 0,
+      probability: 90
+    }));
+
+    return {
+      success: true,
+      source: 'deepseek',
+      results
+    };
+
   } catch (error) {
-    return recognizeFoodFallback(imageBase64);
+    console.error('DeepSeek识别失败:', error.message);
+    return fallbackRecognition();
   }
 }
 
-function isFoodRelated(keyword) {
-  const foodKeywords = [
-    '饭', '面', '肉', '菜', '鱼', '鸡', '鸭', '牛', '猪', '羊',
-    '蛋', '豆腐', '汤', '粥', '饼', '包', '饺', '水果', '苹果',
-    '香蕉', '橙', '葡萄', '西瓜', '草莓', '芒果', '蛋糕', '面包',
-    '奶', '豆', '虾', '蟹', '瓜', '番茄', '黄瓜', '白菜', '萝卜',
-    '土豆', '玉米', '红薯', '火锅', '烤', '炸', '炒', '蒸', '煮'
-  ];
-  return foodKeywords.some(k => keyword.includes(k));
-}
+function fallbackRecognition() {
+  const foods = Object.keys(FOOD_DATABASE);
+  const randomFoods = [];
+  const count = 2 + Math.floor(Math.random() * 2);
 
-function estimateCalorie(foodName) {
-  const calorieMap = {
-    '米饭': 116, '面条': 137, '馒头': 223, '面包': 312,
-    '鸡蛋': 144, '牛奶': 54, '鸡胸肉': 133, '牛肉': 125,
-    '猪肉': 143, '鱼': 113, '虾': 87, '豆腐': 73,
-    '西兰花': 36, '菠菜': 28, '番茄': 15, '苹果': 53,
-    '香蕉': 93, '橙子': 47, '西瓜': 31, '蛋糕': 347,
-    '火锅': 200, '烤肉': 250, '炸鸡': 280, '沙拉': 50
-  };
-
-  for (const [key, cal] of Object.entries(calorieMap)) {
-    if (foodName.includes(key)) return cal;
+  for (let i = 0; i < count; i++) {
+    const name = foods[Math.floor(Math.random() * foods.length)];
+    const data = FOOD_DATABASE[name];
+    randomFoods.push({
+      name,
+      amount: 100 + Math.floor(Math.random() * 100),
+      calories: Math.round(data.calories * (1 + Math.random() * 0.5)),
+      protein: data.protein,
+      carbs: data.carbs,
+      fat: data.fat,
+      probability: 70
+    });
   }
-  return 100;
-}
-
-const MOCK_FOODS = [
-  { name: '米饭', calorie: 116, probability: 0.85 },
-  { name: '红烧肉', calorie: 250, probability: 0.78 },
-  { name: '清炒西兰花', calorie: 36, probability: 0.82 },
-  { name: '番茄炒蛋', calorie: 95, probability: 0.88 },
-  { name: '水煮鱼', calorie: 120, probability: 0.75 },
-  { name: '宫保鸡丁', calorie: 180, probability: 0.80 },
-  { name: '麻婆豆腐', calorie: 120, probability: 0.83 },
-  { name: '糖醋排骨', calorie: 220, probability: 0.77 },
-  { name: '炒青菜', calorie: 30, probability: 0.85 },
-  { name: '酸辣汤', calorie: 45, probability: 0.79 }
-];
-
-function recognizeFoodFallback(imageBase64) {
-  const shuffled = [...MOCK_FOODS].sort(() => Math.random() - 0.5);
-  const results = shuffled.slice(0, 3).map(item => ({
-    ...item,
-    probability: item.probability - Math.random() * 0.1
-  }));
 
   return {
     success: true,
-    source: 'mock',
-    results,
-    message: '未配置百度AI API，使用模拟数据。配置后可识别真实食物。'
+    source: 'fallback',
+    results: randomFoods,
+    message: 'AI识别暂时不可用，已返回参考数据，请根据实际情况调整'
   };
 }
 
