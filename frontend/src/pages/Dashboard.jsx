@@ -25,7 +25,7 @@ export default function Dashboard() {
       const [food, water, analysisData] = await Promise.all([
         foodAPI.getDaily(dateStr),
         waterAPI.getDaily(dateStr),
-        analysisAPI.getAnalysis()
+        analysisAPI.get()
       ]);
       setFoodData(food);
       setWaterData(water);
@@ -158,9 +158,8 @@ export default function Dashboard() {
 
         <h3 className="section-title">今日饮食记录</h3>
         {['breakfast', 'lunch', 'dinner', 'snack'].map(mealType => {
-          const entries = (foodData?.entries || []).filter(e => e.mealType === mealType);
-          const totalCal = entries.reduce((s, e) => s + (e.totalCalories || 0), 0);
-          const allFoods = entries.flatMap(e => e.foods || []);
+          const entries = (foodData?.entries || []).filter(e => (e.meal_type || e.mealType) === mealType);
+          const totalCal = entries.reduce((s, e) => s + (e.calories || e.totalCalories || 0), 0);
           return (
             <div key={mealType} className="meal-card">
               <div className="meal-card-header">
@@ -168,19 +167,22 @@ export default function Dashboard() {
                   {mealEmojis[mealType]} {mealNames[mealType]}
                 </div>
                 <div className="meal-calories">
-                  {allFoods.length > 0 ? `${totalCal} kcal` : '暂无'}
+                  {entries.length > 0 ? `${Math.round(totalCal)} kcal` : '暂无'}
                 </div>
               </div>
-              {allFoods.length > 0 ? (
-                allFoods.map((food, i) => (
-                  <div key={i} className="food-item">
-                    <div className="food-info">
-                      <div className="food-name">{food.name}</div>
-                      <div className="food-detail">{food.amount}{food.unit}</div>
+              {entries.length > 0 ? (
+                entries.map((entry, i) => {
+                  const foods = entry.foods || [{ name: entry.food_name, amount: entry.amount, unit: entry.unit, calories: entry.calories }];
+                  return foods.map((food, j) => (
+                    <div key={`${i}-${j}`} className="food-item">
+                      <div className="food-info">
+                        <div className="food-name">{food.name || food.food_name}</div>
+                        <div className="food-detail">{food.amount || entry.amount}{food.unit || entry.unit || 'g'}</div>
+                      </div>
+                      <div className="food-calories">{Math.round(food.calories || entry.calories || 0)} kcal</div>
                     </div>
-                    <div className="food-calories">{food.calories} kcal</div>
-                  </div>
-                ))
+                  ));
+                })
               ) : null}
             </div>
           );

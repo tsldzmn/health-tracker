@@ -10,7 +10,7 @@ export default function Achievements() {
 
   const loadData = async () => {
     try {
-      const data = await analysisAPI.getAnalysis();
+      const data = await analysisAPI.get();
       setAnalysis(data);
     } catch (err) {
       console.error(err);

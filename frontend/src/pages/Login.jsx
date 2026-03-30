@@ -6,13 +6,20 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!email || !password) { setError('请填写邮箱和密码'); return; }
-    login(email);
+    setLoading(true);
+    try {
+      await login(email, password);
+    } catch (err) {
+      setError(err.message);
+    }
+    setLoading(false);
   };
 
   return (

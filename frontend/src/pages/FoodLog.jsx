@@ -29,7 +29,7 @@ export default function FoodLog() {
       return;
     }
     try {
-      const results = await foodAPI.searchFood(keyword);
+      const results = await foodAPI.search(keyword);
       setSearchResults(results);
     } catch (err) {
       console.error(err);
@@ -125,7 +125,7 @@ export default function FoodLog() {
       setRecognizedFoods([]);
 
       try {
-        const result = await foodAPI.recognizeByImage(base64.split(',')[1]);
+        const result = await foodAPI.recognize(base64.split(',')[1]);
         setRecognizedFoods(result.foods || []);
         setRecognitionSource(result.source || 'unknown');
 

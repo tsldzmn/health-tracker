@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { storage } from './services/storage';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { authAPI } from './services/api';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -16,54 +16,58 @@ import AdminUserDetail from './pages/admin/AdminUserDetail';
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
-function getUser() {
-  const token = localStorage.getItem('token');
-  if (!token) return null;
-  const p = storage.getProfile();
-  return {
-    id: 'local',
-    username: p.username || localStorage.getItem('ht_user') || '用户',
-    email: p.email || localStorage.getItem('ht_email') || '',
-    profile: p, dailyGoals: p.dailyGoals,
-    points: p.points || 0, streakDays: p.streakDays || 0,
-    achievements: p.achievements || [],
-    isAdmin: (p.email || localStorage.getItem('ht_email')) === 'admin@health.com'
-  };
-}
-
 function AuthProvider({ children }) {
-  const [user, setUser] = useState(getUser);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = useCallback((email) => {
-    localStorage.setItem('token', 'local');
-    localStorage.setItem('ht_email', email);
-    localStorage.setItem('ht_user', email.split('@')[0]);
-    setUser(getUser());
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      authAPI.getMe().then(data => {
+        setUser(data.user);
+      }).catch(() => {
+        localStorage.removeItem('token');
+      }).finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, []);
 
-  const register = useCallback((username, email) => {
-    storage.updateProfile({ username, email });
-    localStorage.setItem('token', 'local');
-    localStorage.setItem('ht_email', email);
-    localStorage.setItem('ht_user', username);
-    setUser(getUser());
+  const login = useCallback(async (email, password) => {
+    const data = await authAPI.login(email, password);
+    localStorage.setItem('token', data.token);
+    setUser(data.user);
+    return data;
+  }, []);
+
+  const register = useCallback(async (username, email, password) => {
+    const data = await authAPI.register(username, email, password);
+    localStorage.setItem('token', data.token);
+    setUser(data.user);
+    return data;
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
-    localStorage.removeItem('ht_email');
-    localStorage.removeItem('ht_user');
     setUser(null);
   }, []);
 
-  const updateProfile = useCallback((data, goals) => {
-    storage.updateProfile({ ...data, dailyGoals: goals });
-    setUser(getUser());
+  const updateProfile = useCallback(async (profileData) => {
+    await authAPI.updateProfile(profileData);
+    const data = await authAPI.getMe();
+    setUser(data.user);
   }, []);
 
-  const refreshUser = useCallback(() => setUser(getUser()), []);
+  const refreshUser = useCallback(async () => {
+    try {
+      const data = await authAPI.getMe();
+      setUser(data.user);
+    } catch {}
+  }, []);
 
-  const value = useMemo(() => ({ user, login, register, logout, updateProfile, refreshUser }), [user, login, register, logout, updateProfile, refreshUser]);
+  const value = useMemo(() => ({ user, loading, login, register, logout, updateProfile, refreshUser }), [user, loading, login, register, logout, updateProfile, refreshUser]);
+
+  if (loading) return <div className="loading"><div className="spinner"></div></div>;
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -74,14 +78,13 @@ function Guard({ children }) {
   return children;
 }
 
-function App() {
-  const user = getUser();
+export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-          <Route path="/register" element={user ? <Navigate to="/" replace /> : <Register />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/" element={<Guard><Dashboard /></Guard>} />
           <Route path="/food" element={<Guard><FoodLog /></Guard>} />
           <Route path="/water" element={<Guard><WaterLog /></Guard>} />
@@ -92,10 +95,13 @@ function App() {
           <Route path="/admin/users/:id" element={<Guard><AdminUserDetail /></Guard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        {user && <Navbar />}
+        <NavbarWrapper />
       </AuthProvider>
     </BrowserRouter>
   );
 }
 
-export default App;
+function NavbarWrapper() {
+  const { user } = useAuth();
+  return user ? <Navbar /> : null;
+}

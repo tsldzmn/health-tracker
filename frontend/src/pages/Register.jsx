@@ -8,14 +8,21 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { register } = useAuth();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (password !== confirmPassword) { setError('两次密码不一致'); return; }
     if (password.length < 6) { setError('密码至少6位'); return; }
-    register(username, email);
+    setLoading(true);
+    try {
+      await register(username, email, password);
+    } catch (err) {
+      setError(err.message);
+    }
+    setLoading(false);
   };
 
   return (
