@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rubik's Cube Auto-Solving Animation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .scene {
+            width: 300px;
+            height: 300px;
+            perspective: 800px;
+            perspective-origin: 50% 50%;
+        }
+
+        .cube-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: rotate 10s infinite linear;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotateX(30deg) rotateY(45deg); }
+            100% { transform: rotateX(30deg) rotateY(405deg); }
+        }
+
+        .cube {
+            width: 90px;
+            height: 90px;
+            position: absolute;
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease;
+        }
+
+        .cube-face {
+            position: absolute;
+            width: 90px;
+            height: 90px;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            border-radius: 2px;
+            backface-visibility: visible;
+        }
+
+        /* Face positions */
+        .cube-face.front  { transform: rotateY(0deg) translateZ(45px); }
+        .cube-face.back   { transform: rotateY(180deg) translateZ(45px); }
+        .cube-face.right  { transform: rotateY(90deg) translateZ(45px); }
+        .cube-face.left   { transform: rotateY(-90deg) translateZ(45px); }
+        .cube-face.top    { transform: rotateX(90deg) translateZ(45px); }
+        .cube-face.bottom { transform: rotateX(-90deg) translateZ(45px); }
+
+        /* Colors */
+        .cube-face.white   { background-color: #ffffff; }
+        .cube-face.yellow  { background-color: #ffff00; }
+        .cube-face.red     { background-color: #ff0000; }
+        .cube-face.orange  { background-color: #ff8c00; }
+        .cube-face.blue    { background-color: #0000ff; }
+        .cube-face.green   { background-color: #00ff00; }
+
+        /* Controls */
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .status {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 18px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 5px;
+        }
+
+        .move-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 24px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 20px;
+            border-radius: 5px;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        /* Animation keyframes for each move */
+        @keyframes rotateR {
+            0% { transform: translate3d(90px, 0, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translate3d(90px, 0, 0) rotateX(-90deg) rotateY(0deg) rotateZ(0deg); }
+        }
+
+        @keyframes rotateRprime {
+            0% { transform: translate3d(90px, 0, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translate3d(90px, 0, 0) rotateX(90deg) rotateY(0deg) rotateZ(0deg); }
+        }
+
+        @keyframes rotateL {
+            0% { transform: translate3d(-90px, 0, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translate3d(-90px, 0, 0) rotateX(90deg) rotateY(0deg) rotateZ(0deg); }
+        }
+
+        @keyframes rotateLprime {
+            0% { transform: translate3d(-90px, 0, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translate3d(-90px, 0, 0) rotateX(-90deg) rotateY(0deg) rotateZ(0deg); }
+        }
+
+        @keyframes rotateU {
+            0% { transform: translate3d(0, 90px, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translate3d(0, 90px, 0) rotateX(0deg) rotateY(-90deg) rotateZ(0deg); }
+        }
+
+        @keyframes rotateUprime {
+            0% { transform: translate3d(0, 90px, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translate3d(0, 90px, 0) rotateX(0deg) rotateY(90deg) rotateZ(0deg); }
+        }
+
+        @keyframes rotateD {
+            0% { transform: translate3d(0, -90px, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translate3d(0, -90px, 0) rotateX(0deg) rotateY(90deg) rotateZ(0deg); }
+        }
+
+        @keyframes rotateDprime {
+            0% { transform: translate3d(0, -90px, 0) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translate3d(0, -90px, 0) rotateX(0deg) rotateY(-90deg) rotateZ(0deg); }
+        }
+
+        @keyframes rotateF {
+            0% { transform: translate3d(0, 0, 90px) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translate3d(0, 0, 90px) rotateX(0deg) rotateY(0deg) rotateZ(-90deg); }
+        }
+
+        @keyframes rotateFprime {
+            0% { transform: translate3d(0, 0, 90px) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translate3d(0, 0, 90px) rotateX(0deg) rotateY(0deg) rotateZ(90deg); }
+        }
+
+        @keyframes rotateB {
+            0% { transform: translate3d(0, 0, -90px) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translate3d(0, 0, -90px) rotateX(0deg) rotateY(0deg) rotateZ(90deg); }
+        }
+
+        @keyframes rotateBprime {
+            0% { transform: translate3d(0, 0, -90px) rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+            100% { transform: translate3d(0, 0, -90px) rotateX(0deg) rotateY(0deg) rotateZ(-90deg); }
+        }
+
+        .animate-R {
+            animation: rotateR 0.5s ease forwards;
+        }
+
+        .animate-Rprime {
+            animation: rotateRprime 0.5s ease forwards;
+        }
+
+        .animate-L {
+            animation: rotateL 0.5s ease forwards;
+        }
+
+        .animate-Lprime {
+            animation: rotateLprime 0.5s ease forwards;
+        }
+
+        .animate-U {
+            animation: rotateU 0.5s ease forwards;
+        }
+
+        .animate-Uprime {
+            animation: rotateUprime 0.5s ease forwards;
+        }
+
+        .animate-D {
+            animation: rotateD 0.5s ease forwards;
+        }
+
+        .animate-Dprime {
+            animation: rotateDprime 0.5s ease forwards;
+        }
+
+        .animate-F {
+            animation: rotateF 0.5s ease forwards;
+        }
+
+        .animate-Fprime {
+            animation: rotateFprime 0.5s ease forwards;
+        }
+
+        .animate-B {
+            animation: rotateB 0.5s ease forwards;
+        }
+
+        .animate-Bprime {
+            animation: rotateBprime 0.5s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button id="scrambleBtn">Scramble</button>
+        <button id="solveBtn" disabled>Solve</button>
+        <button id="resetBtn">Reset</button>
+    </div>
+
+    <div class="move-display" id="moveDisplay"></div>
+
+    <div class="scene">
+        <div class="cube-container" id="cubeContainer">
+            <!-- Cubies will be generated here -->
+        </div>
+    </div>
+
+    <div class="status" id="status">Ready</div>
+
+    <script>
+        // Simple Rubik's Cube with CSS animation-based rotations
+        class RubiksCube {
+            constructor() {
+                this.cubes = [];
+                this.scrambleMoves = [];
+                this.solvingMoves = [];
+                this.isAnimating = false;
+                this.colors = ['white', 'yellow', 'red', 'orange', 'blue', 'green'];
+                this.init();
+            }
+
+            init() {
+                const container = document.getElementById('cubeContainer');
+                container.innerHTML = '';
+                this.cubes = [];
+
+                // Create 27 cubes
+                for (let x = -1; x <= 1; x++) {
+                    for (let y = -1; y <= 1; y++) {
+                        for (let z = -1; z <= 1; z++) {
+                            const cube = document.createElement('div');
+                            cube.className = 'cube';
+                            cube.dataset.x = x;
+                            cube.dataset.y = y;
+                            cube.dataset.z = z;
+                            
+                            // Position the cube
+                            cube.style.transform = `translate3d(${x * 90}px, ${y * 90}px, ${z * 90}px)`;
+                            
+                            // Create 6 faces
+                            for (let i = 0; i < 6; i++) {
+                                const face = document.createElement('div');
+                                face.className = `cube-face ${this.colors[i]}`;
+                                cube.appendChild(face);
+                            }
+                            
+                            container.appendChild(cube);
+                            this.cubes.push({
+                                element: cube,
+                                x: x,
+                                y: y,
+                                z: z,
+                                rotation: { x: 0, y: 0, z: 0 }
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Scramble the cube with random moves
+            async scramble() {
+                if (this.isAnimating) return;
+                
+                this.scrambleMoves = [];
+                this.solvingMoves = [];
+                this.isAnimating = true;
+                
+                document.getElementById('scrambleBtn').disabled = true;
+                document.getElementById('solveBtn').disabled = true;
+                document.getElementById('status').textContent = 'Scrambling...';
+                
+                // Generate random moves (20 moves)
+                const moves = [
+                    'R', 'R\'', 'L', 'L\'', 
+                    'U', 'U\'', 'D', 'D\'', 
+                    'F', 'F\'', 'B', 'B\''
+                ];
+                
+                for (let i = 0; i < 20; i++) {
+                    const move = moves[Math.floor(Math.random() * moves.length)];
+                    this.scrambleMoves.push(move);
+                    this.solvingMoves.unshift(this.invertMove(move)); // Add inverse for solving
+                }
+                
+                // Animate scramble moves
+                for (const move of this.scrambleMoves) {
+                    document.getElementById('moveDisplay').textContent = move;
+                    await this.performMove(move);
+                    await this.delay(300);
+                }
+                
+                document.getElementById('moveDisplay').textContent = '';
+                document.getElementById('status').textContent = 'Scrambled!';
+                document.getElementById('solveBtn').disabled = false;
+                this.isAnimating = false;
+            }
+
+            // Solve the cube (using pre-calculated inverse moves)
+            async solve() {
+                if (this.isAnimating) return;
+                
+                this.isAnimating = true;
+                document.getElementById('scrambleBtn').disabled = true;
+                document.getElementById('solveBtn').disabled = true;
+                document.getElementById('status').textContent = 'Solving...';
+                
+                // Animate solving moves
+                for (const move of this.solvingMoves) {
+                    document.getElementById('moveDisplay').textContent = move;
+                    await this.performMove(move);
+                    await this.delay(300);
+                }
+                
+                document.getElementById('moveDisplay').textContent = '';
+                document.getElementById('status').textContent = 'Solved!';
+                this.scrambleMoves = [];
+                this.solvingMoves = [];
+                this.isAnimating = false;
+            }
+
+            // Invert a move (for creating solution)
+            invertMove(move) {
+                if (move.includes('\'')) return move.replace('\'', '');
+                return move + '\'';
+            }
+
+            // Perform a single move with CSS animation
+            async performMove(move) {
+                return new Promise(resolve => {
+                    // Determine which axis and layer to rotate
+                    let axis, layer, animationClass;
+                    
+                    switch (move) {
+                        case 'R': axis = 'x'; layer = 1; animationClass = 'animate-R'; break;
+                        case 'R\'': axis = 'x'; layer = 1; animationClass = 'animate-Rprime'; break;
+                        case 'L': axis = 'x'; layer = -1; animationClass = 'animate-L'; break;
+                        case 'L\'': axis = 'x'; layer = -1; animationClass = 'animate-Lprime'; break;
+                        case 'U': axis = 'y'; layer = 1; animationClass = 'animate-U'; break;
+                        case 'U\'': axis = 'y'; layer = 1; animationClass = 'animate-Uprime'; break;
+                        case 'D': axis = 'y'; layer = -1; animationClass = 'animate-D'; break;
+                        case 'D\'': axis = 'y'; layer = -1; animationClass = 'animate-Dprime'; break;
+                        case 'F': axis = 'z'; layer = 1; animationClass = 'animate-F'; break;
+                        case 'F\'': axis = 'z'; layer = 1; animationClass = 'animate-Fprime'; break;
+                        case 'B': axis = 'z'; layer = -1; animationClass = 'animate-B'; break;
+                        case 'B\'': axis = 'z'; layer = -1; animationClass = 'animate-Bprime'; break;
+                        default: resolve(); return;
+                    }
+                    
+                    // Find cubes in the specified layer
+                    const layerCubes = this.cubes.filter(cube => cube[axis] === layer);
+                    
+                    // Apply animation class to each cube in the layer
+                    layerCubes.forEach(cubeData => {
+                        cubeData.element.classList.add(animationClass);
+                    });
+                    
+                    // Wait for animation to complete
+                    setTimeout(() => {
+                        // Remove animation class and update positions
+                        layerCubes.forEach(cubeData => {
+                            cubeData.element.classList.remove(animationClass);
+                            
+                            // Update position and rotation based on the move
+                            this.updateCubePosition(cubeData, axis, move.includes('\'') ? -1 : 1);
+                        });
+                        
+                        resolve();
+                    }, 500);
+                });
+            }
+
+            // Update cube position after rotation
+            updateCubePosition(cubeData, axis, direction) {
+                const x = cubeData.x;
+                const y = cubeData.y;
+                const z = cubeData.z;
+                
+                // Rotate coordinates
+                switch (axis) {
+                    case 'x':
+                        cubeData.y = -z * direction;
+                        cubeData.z = y * direction;
+                        break;
+                    case 'y':
+                        cubeData.x = z * direction;
+                        cubeData.z = -x * direction;
+                        break;
+                    case 'z':
+                        cubeData.x = -y * direction;
+                        cubeData.y = x * direction;
+                        break;
+                }
+                
+                // Update element transform
+                cubeData.element.style.transform = `translate3d(${cubeData.x * 90}px, ${cubeData.y * 90}px, ${cubeData.z * 90}px)`;
+                cubeData.element.dataset.x = cubeData.x;
+                cubeData.element.dataset.y = cubeData.y;
+                cubeData.element.dataset.z = cubeData.z;
+            }
+
+            // Reset cube to solved state
+            reset() {
+                this.scrambleMoves = [];
+                this.solvingMoves = [];
+                this.isAnimating = false;
+                this.init();
+                
+                document.getElementById('status').textContent = 'Ready';
+                document.getElementById('moveDisplay').textContent = '';
+                document.getElementById('scrambleBtn').disabled = false;
+                document.getElementById('solveBtn').disabled = true;
+            }
+
+            // Utility delay function
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Initialize
+        const cube = new RubiksCube();
+        
+        // Event listeners
+        document.getElementById('scrambleBtn').addEventListener('click', () => {
+            cube.scramble();
+        });
+        
+        document.getElementById('solveBtn').addEventListener('click', () => {
+            cube.solve();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            cube.reset();
+        });
+
+        // Add keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                cube.reset();
+            }
+        });
+    </script>
+</body>
+</html>

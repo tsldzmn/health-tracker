@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>健康饮食管理</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#F8FAFC;color:#1E293B;min-height:100vh}
+.app{max-width:430px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:80px;background:#F8FAFC}
+.page{display:none;min-height:100vh}.page.active{display:block}
+.header{padding:50px 20px 16px;background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;border-bottom:1px solid #E2E8F0}
+.header h1{font-size:24px;font-weight:700}
+.card{background:#fff;border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 4px 20px -5px rgba(16,185,129,0.05)}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all 0.2s}
+.btn-p{background:#10B981;color:#fff}.btn-p:hover{background:#059669}
+.btn-s{background:#F1F5F9;color:#1E293B}.btn-s:hover{background:#E2E8F0}
+.btn-d{background:#EF4444;color:#fff}
+.btn-full{width:100%}
+.input{width:100%;padding:12px 16px;border:1.5px solid #E2E8F0;border-radius:12px;font-size:14px;outline:none;transition:all 0.2s}
+.input:focus{border-color:#10B981;box-shadow:0 0 0 3px rgba(16,185,129,0.1)}
+.nav{position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);border-top:1px solid #E2E8F0;padding:8px 0;display:flex;justify-content:space-around;z-index:100}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 16px;color:#64748B;font-size:10px;font-weight:500;text-decoration:none;border-radius:8px;transition:all 0.2s}
+.nav-item.active{color:#10B981}
+.welcome{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;background:linear-gradient(180deg,#D1FAE5 0%,#F8FAFC 100%)}
+.welcome h1{font-size:28px;font-weight:700;text-align:center;margin-bottom:12px;line-height:1.3}
+.welcome p{color:#64748B;text-align:center;margin-bottom:32px;font-size:14px}
+.ring-wrap{position:relative;width:160px;height:160px;margin:0 auto}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.ring-val{font-size:32px;font-weight:700}
+.ring-label{font-size:11px;color:#64748B}
+.macro-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:12px 0}
+.macro-card{background:#fff;border-radius:16px;padding:12px;box-shadow:0 4px 20px -5px rgba(16,185,129,0.05)}
+.macro-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;margin-bottom:8px}
+.macro-name{font-size:11px;color:#64748B;margin-bottom:2px}
+.macro-val{font-size:16px;font-weight:700}
+.macro-bar{height:4px;background:#F1F5F9;border-radius:2px;margin-top:6px;overflow:hidden}
+.macro-fill{height:100%;border-radius:2px;transition:width 0.5s}
+.water-row{display:flex;align-items:center;gap:12px}
+.water-bar{flex:1;height:8px;background:#F1F5F9;border-radius:4px;overflow:hidden}
+.water-fill{height:100%;background:linear-gradient(90deg,#0EA5E9,#10B981);border-radius:4px;transition:width 0.5s}
+.water-quick{display:flex;gap:6px;justify-content:center;margin-top:10px}
+.water-btn{padding:6px 12px;border-radius:20px;background:#F1F5F9;font-size:12px;font-weight:500;border:none;cursor:pointer;color:#1E293B}
+.water-btn:hover{background:#10B981;color:#fff}
+.meal-header{display:flex;justify-content:space-between;align-items:center;padding:10px 0}
+.meal-name{font-size:14px;font-weight:600}
+.meal-cal{font-size:12px;color:#64748B}
+.food-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid #F1F5F9}
+.food-name{font-size:13px}.food-detail{font-size:11px;color:#64748B}
+.food-cal{font-size:13px;font-weight:600;color:#F59E0B}
+.search-box{position:relative}
+.search-results{position:absolute;top:100%;left:0;right:0;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.12);max-height:200px;overflow-y:auto;z-index:60;margin-top:4px}
+.search-item{padding:10px 16px;border-bottom:1px solid #F1F5F9;cursor:pointer;display:flex;justify-content:space-between}
+.search-item:hover{background:#F8FAFC}
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:none;align-items:flex-end;justify-content:center;z-index:200}
+.modal.show{display:flex}
+.modal-box{background:#fff;border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:430px;max-height:80vh;overflow-y:auto}
+.meal-tabs{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto}
+.meal-tab{padding:8px 16px;border-radius:10px;border:1.5px solid #E2E8F0;background:#fff;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap}
+.meal-tab.active{background:#10B981;border-color:#10B981;color:#fff}
+.plan-card{background:#fff;border-radius:20px;overflow:hidden;margin-bottom:16px;box-shadow:0 4px 20px -5px rgba(16,185,129,0.05)}
+.plan-img{height:120px;object-fit:cover;width:100%}
+.plan-body{padding:16px}
+.plan-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.plan-meta{font-size:12px;color:#64748B;margin-bottom:8px}
+.plan-tags{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.plan-tag{padding:4px 8px;border-radius:6px;font-size:10px;font-weight:500}
+.admin-user{padding:12px;border-bottom:1px solid #F1F5F9}
+.admin-user:last-child{border-bottom:none}
+.admin-row{display:flex;justify-content:space-between;align-items:center}
+.admin-info{display:flex;align-items:center;gap:10px}
+.admin-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px}
+.admin-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#1E293B;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;z-index:300;display:none}
+.chip{display:inline-flex;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500}
+.chip-g{background:#D1FAE5;color:#10B981}
+.chip-y{background:#FEF3C7;color:#F59E0B}
+.chip-r{background:#FEE2E2;color:#EF4444}
+.loading{display:flex;justify-content:center;padding:40px}
+.spinner{width:32px;height:32px;border:3px solid #E2E8F0;border-top-color:#10B981;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.photo-area{border:2px dashed #E2E8F0;border-radius:16px;padding:30px;text-align:center;cursor:pointer;transition:all 0.2s}
+.photo-area:hover{border-color:#10B981;background:#F0FDF4}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<div class="toast" id="toast"></div>
+
+<!-- 欢迎页 -->
+<div class="page active" id="page-welcome">
+<div class="welcome">
+<div style="width:64px;height:64px;background:#D1FAE5;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:20px">🥗</div>
+<h1>记录每一餐<br>轻松管理健康</h1>
+<p>追踪每日饮食、饮水，获取个性化健康建议</p>
+<button class="btn btn-p btn-full" onclick="showPage('login')" style="margin-bottom:12px">开始体验</button>
+<div style="text-align:center;font-size:13px;color:#64748B">已有账号？<a href="#" onclick="showPage('login');return false" style="color:#10B981;font-weight:600">登录</a></div>
+</div>
+</div>
+
+<!-- 登录页 -->
+<div class="page" id="page-login">
+<div class="welcome">
+<div style="width:64px;height:64px;background:#D1FAE5;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:20px">🥗</div>
+<h1>欢迎回来</h1>
+<p style="margin-bottom:24px">登录你的健康账户</p>
+<div style="width:100%">
+<div style="margin-bottom:12px"><input class="input" id="login-email" type="email" placeholder="邮箱"></div>
+<div style="margin-bottom:16px"><input class="input" id="login-pass" type="password" placeholder="密码"></div>
+<button class="btn btn-p btn-full" onclick="doLogin()" style="margin-bottom:12px">登录</button>
+<div style="text-align:center;font-size:13px;color:#64748B">没有账号？<a href="#" onclick="showPage('register');return false" style="color:#10B981;font-weight:600">注册</a></div>
+</div>
+</div>
+</div>
+
+<!-- 注册页 -->
+<div class="page" id="page-register">
+<div class="welcome">
+<div style="width:64px;height:64px;background:#D1FAE5;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:20px">🥗</div>
+<h1>创建账号</h1>
+<p style="margin-bottom:24px">开始你的健康之旅</p>
+<div style="width:100%">
+<div style="margin-bottom:12px"><input class="input" id="reg-name" placeholder="用户名"></div>
+<div style="margin-bottom:12px"><input class="input" id="reg-email" type="email" placeholder="邮箱"></div>
+<div style="margin-bottom:12px"><input class="input" id="reg-pass" type="password" placeholder="密码（至少6位）"></div>
+<button class="btn btn-p btn-full" onclick="doReg()" style="margin-bottom:12px">注册</button>
+<div style="text-align:center;font-size:13px;color:#64748B">已有账号？<a href="#" onclick="showPage('login');return false" style="color:#10B981;font-weight:600">登录</a></div>
+</div>
+</div>
+</div>
+
+<!-- 首页 -->
+<div class="page" id="page-home">
+<div class="header">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<div>
+<p style="font-size:13px;color:#64748B" id="date-display"></p>
+<h1 id="greeting">你好 👋</h1>
+</div>
+<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px" id="avatar">U</div>
+</div>
+</div>
+<div style="padding:16px 20px">
+<!-- 热量环 -->
+<div class="card" style="text-align:center;padding:24px">
+<div class="ring-wrap">
+<svg width="160" height="160" viewBox="0 0 160 160"><circle cx="80" cy="80" r="70" fill="none" stroke="#F1F5F9" stroke-width="12"/><circle id="cal-ring" cx="80" cy="80" r="70" fill="none" stroke="#10B981" stroke-width="12" stroke-linecap="round" stroke-dasharray="440" stroke-dashoffset="440" style="transition:stroke-dashoffset 1s"/></svg>
+<div class="ring-center"><div class="ring-val" id="cal-eaten">0</div><div class="ring-label">已摄入 kcal</div></div>
+</div>
+<div style="display:flex;justify-content:space-around;margin-top:16px">
+<div style="text-align:center"><div style="font-size:11px;color:#64748B">目标</div><div style="font-weight:700" id="cal-goal">1500</div></div>
+<div style="text-align:center"><div style="font-size:11px;color:#64748B">剩余</div><div style="font-weight:700;color:#10B981" id="cal-left">1500</div></div>
+</div>
+</div>
+
+<!-- 营养素 -->
+<div class="macro-grid">
+<div class="macro-card"><div class="macro-icon" style="background:#FEF3C7">🌾</div><div class="macro-name">碳水</div><div class="macro-val"><span id="m-carbs">0</span><span style="font-size:10px;color:#64748B">/200g</span></div><div class="macro-bar"><div class="macro-fill" id="m-carbs-bar" style="width:0%;background:#F59E0B"></div></div></div>
+<div class="macro-card"><div class="macro-icon" style="background:#D1FAE5">🥩</div><div class="macro-name">蛋白质</div><div class="macro-val"><span id="m-protein">0</span><span style="font-size:10px;color:#64748B">/80g</span></div><div class="macro-bar"><div class="macro-fill" id="m-protein-bar" style="width:0%;background:#10B981"></div></div></div>
+<div class="macro-card"><div class="macro-icon" style="background:#F1F5F9">💧</div><div class="macro-name">脂肪</div><div class="macro-val"><span id="m-fat">0</span><span style="font-size:10px;color:#64748B">/60g</span></div><div class="macro-bar"><div class="macro-fill" id="m-fat-bar" style="width:0%;background:#64748B"></div></div></div>
+</div>
+
+<!-- 饮水 -->
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<span style="font-weight:600">💧 饮水打卡</span>
+<span style="font-size:13px;color:#64748B" id="water-display">0 / 2000 ml</span>
+</div>
+<div class="water-bar"><div class="water-fill" id="water-bar" style="width:0%"></div></div>
+<div class="water-quick">
+<button class="water-btn" onclick="addWater(100)">+100ml</button>
+<button class="water-btn" onclick="addWater(200)">+200ml</button>
+<button class="water-btn" onclick="addWater(250)">+250ml</button>
+<button class="water-btn" onclick="addWater(500)">+500ml</button>
+</div>
+</div>
+
+<!-- 健康建议 -->
+<div class="card" id="tips-card" style="background:linear-gradient(135deg,#10B981,#059669);color:#fff">
+<div style="font-weight:600;margin-bottom:8px">💡 健康建议</div>
+<div id="tips-content" style="font-size:13px;opacity:0.9"></div>
+</div>
+
+<!-- 今日饮食 -->
+<div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px">
+<h3 style="font-size:16px;font-weight:700">今日饮食</h3>
+<button class="btn btn-p" style="padding:8px 16px;font-size:12px" onclick="showModal('food-modal')">+ 记录</button>
+</div>
+<div id="food-list"></div>
+</div>
+</div>
+
+<!-- 饮水页 -->
+<div class="page" id="page-water">
+<div class="header"><h1>💧 饮水打卡</h1><p style="font-size:13px;color:#64748B">保持水分摄入</p></div>
+<div style="padding:16px 20px">
+<div class="card" style="text-align:center;padding:32px">
+<div class="ring-wrap" style="width:180px;height:180px">
+<svg width="180" height="180" viewBox="0 0 180 180"><circle cx="90" cy="90" r="80" fill="none" stroke="#F1F5F9" stroke-width="12"/><circle id="water-ring" cx="90" cy="90" r="80" fill="none" stroke="#0EA5E9" stroke-width="12" stroke-linecap="round" stroke-dasharray="502" stroke-dashoffset="502" style="transition:stroke-dashoffset 1s"/></svg>
+<div class="ring-center"><div class="ring-val" id="water-ring-val" style="color:#0EA5E9">0</div><div class="ring-label">/ <span id="water-ring-goal">2000</span> ml</div></div>
+</div>
+</div>
+<div class="water-quick" style="flex-wrap:wrap;gap:8px;margin-top:16px">
+<button class="btn btn-s" onclick="addWater(100)">🥛 一小杯 100ml</button>
+<button class="btn btn-s" onclick="addWater(200)">🥤 一杯水 200ml</button>
+<button class="btn btn-s" onclick="addWater(250)">☕ 马克杯 250ml</button>
+<button class="btn btn-s" onclick="addWater(350)">🥫 一罐 350ml</button>
+<button class="btn btn-s" onclick="addWater(500)">🍶 一瓶 500ml</button>
+<button class="btn btn-s" onclick="addWater(750)">🫗 大瓶 750ml</button>
+</div>
+<div style="display:flex;gap:8px;margin-top:16px">
+<input class="input" id="custom-water" type="number" placeholder="自定义ml" style="flex:1">
+<button class="btn btn-p" onclick="addWater(+document.getElementById('custom-water').value||0)">添加</button>
+</div>
+</div>
+</div>
+
+<!-- 计划页 -->
+<div class="page" id="page-plan">
+<div class="header"><h1>📋 饮食计划</h1><p style="font-size:13px;color:#64748B">选择适合你的计划</p></div>
+<div style="padding:16px 20px">
+<div class="card" style="background:linear-gradient(135deg,#10B981,#059669);color:#fff;margin-bottom:20px">
+<div style="font-weight:600;margin-bottom:4px">🍽️ 今日推荐下一餐</div>
+<div id="next-meal" style="font-size:14px;opacity:0.95"></div>
+</div>
+<div class="plan-card"><div style="height:100px;background:linear-gradient(135deg,#10B981,#34D399);display:flex;align-items:flex-end;padding:16px"><div style="color:#fff"><span style="background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:4px;font-size:10px">21天</span><h3 style="font-size:18px;margin-top:4px">低碳减脂计划</h3></div></div><div class="plan-body"><div class="plan-tags"><span class="plan-tag" style="background:#F1F5F9">碳水20%</span><span class="plan-tag" style="background:#D1FAE5;color:#10B981">蛋白50%</span><span class="plan-tag" style="background:#F1F5F9">脂肪30%</span></div><div style="font-size:12px;color:#64748B;margin-bottom:12px">每日目标：1400 kcal</div><button class="btn btn-p btn-full" style="font-size:13px">开始计划</button></div></div>
+<div class="plan-card"><div style="height:100px;background:linear-gradient(135deg,#F59E0B,#FBBF24);display:flex;align-items:flex-end;padding:16px"><div style="color:#fff"><span style="background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:4px;font-size:10px">30天</span><h3 style="font-size:18px;margin-top:4px">高蛋白增肌计划</h3></div></div><div class="plan-body"><div class="plan-tags"><span class="plan-tag" style="background:#F1F5F9">碳水40%</span><span class="plan-tag" style="background:#FEF3C7;color:#F59E0B">蛋白40%</span><span class="plan-tag" style="background:#F1F5F9">脂肪20%</span></div><div style="font-size:12px;color:#64748B;margin-bottom:12px">每日目标：2200 kcal</div><button class="btn btn-s btn-full" style="font-size:13px">开始计划</button></div></div>
+<div class="plan-card"><div style="height:100px;background:linear-gradient(135deg,#8B5CF6,#A78BFA);display:flex;align-items:flex-end;padding:16px"><div style="color:#fff"><span style="background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:4px;font-size:10px">14天</span><h3 style="font-size:18px;margin-top:4px">均衡饮食计划</h3></div></div><div class="plan-body"><div class="plan-tags"><span class="plan-tag" style="background:#F1F5F9">碳水50%</span><span class="plan-tag" style="background:#EDE9FE;color:#8B5CF6">蛋白25%</span><span class="plan-tag" style="background:#F1F5F9">脂肪25%</span></div><div style="font-size:12px;color:#64748B;margin-bottom:12px">每日目标：1800 kcal</div><button class="btn btn-s btn-full" style="font-size:13px">开始计划</button></div></div>
+</div>
+</div>
+
+<!-- 我的页 -->
+<div class="page" id="page-profile">
+<div class="header"><h1>👤 个人中心</h1></div>
+<div style="padding:16px 20px">
+<div class="card" style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+<div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:22px" id="profile-avatar">U</div>
+<div><div style="font-weight:600;font-size:18px" id="profile-name">用户</div><div style="font-size:13px;color:#64748B" id="profile-email"></div></div>
+</div>
+<div class="card">
+<h3 style="margin-bottom:12px;font-size:15px">身体数据</h3>
+<div class="input-group" style="margin-bottom:10px"><label style="font-size:12px;color:#64748B;display:block;margin-bottom:4px">身高(cm)</label><input class="input" id="p-height" type="number" placeholder="170"></div>
+<div class="input-group" style="margin-bottom:10px"><label style="font-size:12px;color:#64748B;display:block;margin-bottom:4px">体重(kg)</label><input class="input" id="p-weight" type="number" placeholder="65"></div>
+<div class="input-group" style="margin-bottom:10px"><label style="font-size:12px;color:#64748B;display:block;margin-bottom:4px">目标体重(kg)</label><input class="input" id="p-target" type="number" placeholder="60"></div>
+<div class="input-group" style="margin-bottom:10px"><label style="font-size:12px;color:#64748B;display:block;margin-bottom:4px">年龄</label><input class="input" id="p-age" type="number" placeholder="25"></div>
+<div class="input-group" style="margin-bottom:10px"><label style="font-size:12px;color:#64748B;display:block;margin-bottom:4px">性别</label><div style="display:flex;gap:8px"><button class="meal-tab" id="gender-male" onclick="setGender('male')">男</button><button class="meal-tab" id="gender-female" onclick="setGender('female')">女</button></div></div>
+<div class="input-group" style="margin-bottom:10px"><label style="font-size:12px;color:#64748B;display:block;margin-bottom:4px">每日热量目标(kcal)</label><input class="input" id="p-calgoal" type="number" placeholder="1500"></div>
+<div class="input-group" style="margin-bottom:16px"><label style="font-size:12px;color:#64748B;display:block;margin-bottom:4px">每日饮水目标(ml)</label><input class="input" id="p-watergoal" type="number" placeholder="2000"></div>
+<button class="btn btn-p btn-full" onclick="saveProfile()">保存资料</button>
+</div>
+<div id="admin-link" style="display:none"><button class="btn btn-full" style="background:linear-gradient(135deg,#F59E0B,#EF4444);color:#fff;margin-top:12px" onclick="showPage('admin')">⚙️ 管理后台</button></div>
+<button class="btn btn-d btn-full" onclick="doLogout()" style="margin-top:12px">退出登录</button>
+</div>
+</div>
+
+<!-- 管理员页 -->
+<div class="page" id="page-admin">
+<div class="header" style="display:flex;align-items:center;gap:12px"><button class="btn btn-s" style="padding:8px 12px" onclick="showPage('profile')">←</button><h1>⚙️ 管理后台</h1></div>
+<div style="padding:16px 20px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+<div class="card" style="text-align:center"><div style="font-size:24px;font-weight:700;color:#10B981" id="admin-users">0</div><div style="font-size:11px;color:#64748B">总用户</div></div>
+<div class="card" style="text-align:center"><div style="font-size:24px;font-weight:700;color:#F59E0B" id="admin-foods">0</div><div style="font-size:11px;color:#64748B">饮食记录</div></div>
+</div>
+<button class="btn btn-p btn-full" onclick="showModal('add-user-modal')" style="margin-bottom:16px">+ 添加用户</button>
+<div class="card" id="admin-user-list" style="padding:0;overflow:hidden"></div>
+</div>
+</div>
+
+<!-- 添加饮食弹窗 -->
+<div class="modal" id="food-modal">
+<div class="modal-box">
+<div style="width:36px;height:4px;background:#E2E8F0;border-radius:2px;margin:0 auto 16px"></div>
+<h3 style="margin-bottom:12px">记录饮食</h3>
+<div class="meal-tabs" id="meal-tabs">
+<button class="meal-tab active" data-meal="breakfast">🌅 早餐</button>
+<button class="meal-tab" data-meal="lunch">☀️ 午餐</button>
+<button class="meal-tab" data-meal="dinner">🌙 晚餐</button>
+<button class="meal-tab" data-meal="snack">🍎 加餐</button>
+</div>
+<div class="search-box"><input class="input" id="food-search" placeholder="搜索食物，如：米饭" oninput="searchFood(this.value)"><div class="search-results" id="search-results" style="display:none"></div></div>
+<div class="photo-area" onclick="document.getElementById('photo-input').click()" style="margin:12px 0">
+<div style="font-size:32px;margin-bottom:8px">📸</div>
+<div style="font-size:13px;color:#64748B">拍照识别食物热量</div>
+<input type="file" id="photo-input" accept="image/*" style="display:none" onchange="handlePhoto(this)">
+</div>
+<div id="selected-foods"></div>
+<div style="display:flex;gap:8px;margin-top:12px">
+<button class="btn btn-s" style="flex:1" onclick="hideModal('food-modal')">取消</button>
+<button class="btn btn-p" style="flex:1" onclick="submitFoods()">保存</button>
+</div>
+</div>
+</div>
+
+<!-- 添加用户弹窗 -->
+<div class="modal" id="add-user-modal">
+<div class="modal-box">
+<div style="width:36px;height:4px;background:#E2E8F0;border-radius:2px;margin:0 auto 16px"></div>
+<h3 style="margin-bottom:16px">添加用户</h3>
+<div style="margin-bottom:12px"><input class="input" id="new-name" placeholder="用户名"></div>
+<div style="margin-bottom:12px"><input class="input" id="new-email" type="email" placeholder="邮箱"></div>
+<div style="margin-bottom:16px"><input class="input" id="new-pass" type="password" placeholder="密码"></div>
+<div style="display:flex;gap:8px">
+<button class="btn btn-s" style="flex:1" onclick="hideModal('add-user-modal')">取消</button>
+<button class="btn btn-p" style="flex:1" onclick="addUser()">创建</button>
+</div>
+</div>
+</div>
+
+<!-- 底部导航 -->
+<div class="nav" id="nav-bar" style="display:none">
+<a class="nav-item active" data-page="home" onclick="showPage('home')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>首页</a>
+<a class="nav-item" data-page="water" onclick="showPage('water')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>饮水</a>
+<a class="nav-item" data-page="plan" onclick="showPage('plan')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>计划</a>
+<a class="nav-item" data-page="profile" onclick="showPage('profile')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>我的</a>
+</div>
+</div>
+
+<script>
+let token=localStorage.getItem('token');
+let user=JSON.parse(localStorage.getItem('user')||'null');
+let selectedMeal='breakfast';
+let selectedFoods=[];
+let currentGender='';
+
+function showPage(p){
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+  document.querySelector('.nav-item[data-page="'+p+'"]')?.classList.add('active');
+  document.getElementById('nav-bar').style.display=['home','water','plan','profile'].includes(p)?'flex':'none';
+  if(p==='home')loadHome();
+  if(p==='water')loadWater();
+  if(p==='profile')loadProfile();
+  if(p==='admin')loadAdmin();
+  if(p==='plan')loadPlan();
+}
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2000)}
+function showModal(id){document.getElementById(id).classList.add('show')}
+function hideModal(id){document.getElementById(id).classList.remove('show')}
+
+async function api(url,opts={}){
+  const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(opts.headers||{})}});
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.msg||'请求失败');
+  return d;
+}
+
+async function doLogin(){
+  try{
+    const d=await api('/api/login',{method:'POST',body:JSON.stringify({email:document.getElementById('login-email').value,pass:document.getElementById('login-pass').value})});
+    token=d.token;user=d.user;localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify(user));
+    showPage('home');
+  }catch(e){toast(e.message)}
+}
+
+async function doReg(){
+  try{
+    const d=await api('/api/reg',{method:'POST',body:JSON.stringify({name:document.getElementById('reg-name').value,email:document.getElementById('reg-email').value,pass:document.getElementById('reg-pass').value})});
+    token=d.token;user=d.user;localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify(user));
+    showPage('home');
+  }catch(e){toast(e.message)}
+}
+
+function doLogout(){localStorage.removeItem('token');localStorage.removeItem('user');token=null;user=null;showPage('login')}
+
+async function loadHome(){
+  if(!token)return showPage('login');
+  try{
+    const a=await api('/api/analysis');
+    const f=await api('/api/food');
+    const w=await api('/api/water');
+    document.getElementById('greeting').textContent='你好, '+(user?.name||'用户')+' 👋';
+    document.getElementById('avatar').textContent=(user?.name||'U').charAt(0).toUpperCase();
+    const d=new Date();const days=['日','一','二','三','四','五','六'];
+    document.getElementById('date-display').textContent='星期'+days[d.getDay()]+', '+(d.getMonth()+1)+'月'+d.getDate()+'日';
+    document.getElementById('cal-eaten').textContent=a.cal;
+    document.getElementById('cal-goal').textContent=a.calGoal;
+    document.getElementById('cal-left').textContent=Math.max(0,a.calGoal-a.cal);
+    const pct=Math.min(a.cal/a.calGoal,1);
+    document.getElementById('cal-ring').style.strokeDashoffset=440-pct*440;
+    const carbs=f.foods.reduce((s,x)=>s+(x.carbs||0),0);
+    const protein=f.foods.reduce((s,x)=>s+(x.protein||0),0);
+    const fat=f.foods.reduce((s,x)=>s+(x.fat||0),0);
+    document.getElementById('m-carbs').textContent=Math.round(carbs);
+    document.getElementById('m-protein').textContent=Math.round(protein);
+    document.getElementById('m-fat').textContent=Math.round(fat);
+    document.getElementById('m-carbs-bar').style.width=Math.min(carbs/200*100,100)+'%';
+    document.getElementById('m-protein-bar').style.width=Math.min(protein/80*100,100)+'%';
+    document.getElementById('m-fat-bar').style.width=Math.min(fat/60*100,100)+'%';
+    document.getElementById('water-display').textContent=w.total+' / '+w.goal+' ml';
+    document.getElementById('water-bar').style.width=Math.min(w.total/w.goal*100,100)+'%';
+    const tips=[];
+    if(a.bmi)tips.push('BMI: '+a.bmi+' ('+a.bmiStatus+')');
+    a.tips.forEach(t=>tips.push(t));
+    if(a.nextMeal)tips.push('🍽️ '+a.nextMeal);
+    document.getElementById('tips-content').innerHTML=tips.length?tips.map(t=>'• '+t).join('<br>'):'开始记录你的饮食吧！';
+    renderFoodList(f.foods);
+  }catch(e){toast(e.message)}
+}
+
+function renderFoodList(foods){
+  const meals={breakfast:{name:'🌅 早餐',items:[]},lunch:{name:'☀️ 午餐',items:[]},dinner:{name:'🌙 晚餐',items:[]},snack:{name:'🍎 加餐',items:[]}};
+  foods.forEach(f=>{if(meals[f.meal])meals[f.meal].items.push(f)});
+  let html='';
+  for(const[m,v]of Object.entries(meals)){
+    const cal=v.items.reduce((s,f)=>s+f.cal,0);
+    html+='<div class="card"><div class="meal-header"><span class="meal-name">'+v.name+'</span><span class="meal-cal">'+(cal?cal+' kcal':'暂无')+'</span></div>';
+    v.items.forEach(f=>{html+='<div class="food-row"><div><div class="food-name">'+f.name+'</div><div class="food-detail">'+f.amount+'g</div></div><div class="food-cal">'+f.cal+' kcal</div></div>'});
+    html+='</div>';
+  }
+  document.getElementById('food-list').innerHTML=html;
+}
+
+async function addWater(amount){
+  if(!amount||amount<=0)return;
+  try{
+    const d=await api('/api/water',{method:'POST',body:JSON.stringify({amount})});
+    toast('已添加 '+amount+'ml');
+    if(document.getElementById('page-water').classList.contains('active'))loadWater();
+    if(document.getElementById('page-home').classList.contains('active'))loadHome();
+  }catch(e){toast(e.message)}
+}
+
+async function loadWater(){
+  try{
+    const d=await api('/api/water');
+    document.getElementById('water-ring-val').textContent=d.total;
+    document.getElementById('water-ring-goal').textContent=d.goal;
+    const pct=Math.min(d.total/d.goal,1);
+    document.getElementById('water-ring').style.strokeDashoffset=502-pct*502;
+  }catch(e){toast(e.message)}
+}
+
+function loadPlan(){
+  api('/api/analysis').then(a=>{
+    document.getElementById('next-meal').textContent=a.nextMeal||'请先填写个人资料获取推荐';
+  }).catch(()=>{});
+}
+
+function loadProfile(){
+  document.getElementById('profile-avatar').textContent=(user?.name||'U').charAt(0).toUpperCase();
+  document.getElementById('profile-name').textContent=user?.name||'用户';
+  document.getElementById('profile-email').textContent=user?.email||'';
+  document.getElementById('p-height').value=user?.height||'';
+  document.getElementById('p-weight').value=user?.weight||'';
+  document.getElementById('p-target').value=user?.target||'';
+  document.getElementById('p-age').value=user?.age||'';
+  document.getElementById('p-calgoal').value=user?.calGoal||1500;
+  document.getElementById('p-watergoal').value=user?.waterGoal||2000;
+  currentGender=user?.gender||'';
+  document.getElementById('gender-male').classList.toggle('active',currentGender==='male');
+  document.getElementById('gender-female').classList.toggle('active',currentGender==='female');
+  document.getElementById('admin-link').style.display=user?.admin?'block':'none';
+}
+
+function setGender(g){currentGender=g;document.getElementById('gender-male').classList.toggle('active',g==='male');document.getElementById('gender-female').classList.toggle('active',g==='female')}
+
+async function saveProfile(){
+  try{
+    await api('/api/profile',{method:'PUT',body:JSON.stringify({
+      name:document.getElementById('profile-name').textContent,
+      height:document.getElementById('p-height').value,
+      weight:document.getElementById('p-weight').value,
+      target:document.getElementById('p-target').value,
+      age:document.getElementById('p-age').value,
+      gender:currentGender,
+      calGoal:document.getElementById('p-calgoal').value,
+      waterGoal:document.getElementById('p-watergoal').value
+    })});
+    const d=await api('/api/me');user=d.user;localStorage.setItem('user',JSON.stringify(user));
+    toast('保存成功');
+  }catch(e){toast(e.message)}
+}
+
+async function loadAdmin(){
+  try{
+    const[s,u]=await Promise.all([api('/api/admin/stats'),api('/api/admin/users')]);
+    document.getElementById('admin-users').textContent=s.users;
+    document.getElementById('admin-foods').textContent=s.foods;
+    let html='';
+    u.forEach(x=>{
+      html+='<div class="admin-user"><div class="admin-row"><div class="admin-info"><div class="admin-avatar" style="background:'+(x.admin?'linear-gradient(135deg,#F59E0B,#EF4444)':'linear-gradient(135deg,#10B981,#059669)')+'">'+x.name.charAt(0)+'</div><div><div style="font-weight:600">'+x.name+' '+(x.admin?'👑':'')+' '+(!x.active?'🚫':'')+'</div><div style="font-size:12px;color:#64748B">'+x.email+'</div></div></div><div style="display:flex;gap:6px">';
+      html+='<button class="btn btn-s" style="padding:4px 10px;font-size:11px" onclick="toggleUser('+x.id+','+x.active+')">'+(x.active?'禁用':'启用')+'</button>';
+      if(!x.admin)html+='<button class="btn btn-d" style="padding:4px 10px;font-size:11px" onclick="delUser('+x.id+',\''+x.name+'\')">删除</button>';
+      html+='</div></div><div class="admin-stats"><div style="text-align:center"><div style="font-weight:700;color:#F59E0B">'+x.todayCal+'</div><div style="font-size:10px;color:#64748B">今日热量</div></div><div style="text-align:center"><div style="font-weight:700;color:#0EA5E9">'+x.todayWater+'</div><div style="font-size:10px;color:#64748B">今日饮水</div></div><div style="text-align:center"><div style="font-weight:700">'+(x.height>0?x.height+'cm':'-')+'</div><div style="font-size:10px;color:#64748B">身高</div></div><div style="text-align:center"><div style="font-weight:700">'+(x.weight>0?x.weight+'kg':'-')+'</div><div style="font-size:10px;color:#64748B">体重</div></div></div></div>';
+    });
+    document.getElementById('admin-user-list').innerHTML=html;
+  }catch(e){toast(e.message)}
+}
+
+async function toggleUser(id,active){
+  await api('/api/admin/users/'+id,{method:'PUT',body:JSON.stringify({active:active?0:1})});
+  loadAdmin();
+}
+
+async function delUser(id,name){
+  if(!confirm('确定删除用户 "'+name+'" ？'))return;
+  await api('/api/admin/users/'+id,{method:'DELETE'});
+  loadAdmin();
+}
+
+async function addUser(){
+  const name=document.getElementById('new-name').value;
+  const email=document.getElementById('new-email').value;
+  const pass=document.getElementById('new-pass').value;
+  if(!name||!email||!pass)return toast('请填写完整');
+  try{
+    await api('/api/admin/users',{method:'POST',body:JSON.stringify({name,email,pass})});
+    hideModal('add-user-modal');
+    loadAdmin();
+    toast('创建成功');
+  }catch(e){toast(e.message)}
+}
+
+// 食物搜索
+let searchTimer;
+function searchFood(q){
+  clearTimeout(searchTimer);
+  if(!q){document.getElementById('search-results').style.display='none';return}
+  searchTimer=setTimeout(async()=>{
+    try{
+      const r=await api('/api/search?q='+q);
+      const box=document.getElementById('search-results');
+      if(!r.length){box.style.display='none';return}
+      box.innerHTML=r.map(f=>'<div class="search-item" onclick="addFoodFromSearch(\''+f.name+'\','+f.cal+')"><span>'+f.name+'</span><span style="color:#F59E0B">'+f.cal+' kcal/100g</span></div>').join('');
+      box.style.display='block';
+    }catch(e){}
+  },300);
+}
+
+function addFoodFromSearch(name,cal){
+  selectedFoods.push({name,amount:100,cal,protein:0,carbs:0,fat:0});
+  renderSelectedFoods();
+  document.getElementById('search-results').style.display='none';
+  document.getElementById('food-search').value='';
+}
+
+function renderSelectedFoods(){
+  const box=document.getElementById('selected-foods');
+  box.innerHTML=selectedFoods.map((f,i)=>'<div class="food-row"><div><div class="food-name">'+f.name+'</div><div class="food-detail">'+f.amount+'g</div></div><div style="display:flex;align-items:center;gap:8px"><span class="food-cal">'+f.cal+' kcal</span><button onclick="removeFood('+i+')" style="background:none;border:none;color:#EF4444;font-size:16px;cursor:pointer">×</button></div></div>').join('');
+}
+
+function removeFood(i){selectedFoods.splice(i,1);renderSelectedFoods()}
+
+// 餐次选择
+document.querySelectorAll('.meal-tab').forEach(btn=>{
+  btn.addEventListener('click',function(){
+    if(this.dataset.meal){
+      document.querySelectorAll('.meal-tab').forEach(b=>b.classList.remove('active'));
+      this.classList.add('active');
+      selectedMeal=this.dataset.meal;
+    }
+  });
+});
+
+async function submitFoods(){
+  if(!selectedFoods.length)return toast('请先添加食物');
+  try{
+    await api('/api/food',{method:'POST',body:JSON.stringify({meal:selectedMeal,items:selectedFoods})});
+    selectedFoods=[];
+    renderSelectedFoods();
+    hideModal('food-modal');
+    toast('记录成功');
+    loadHome();
+  }catch(e){toast(e.message)}
+}
+
+function handlePhoto(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async function(e){
+    const base64=e.target.result.split(',')[1];
+    toast('正在识别...');
+    try{
+      const d=await api('/api/recognize-food',{method:'POST',body:JSON.stringify({image:base64})});
+      if(d.foods)d.foods.forEach(f=>selectedFoods.push(f));
+      renderSelectedFoods();
+      toast('识别完成');
+    }catch(e){toast('识别失败，请手动输入')}
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+
+// 初始化
+if(token&&user){showPage('home')}else{showPage('welcome')}
+</script>
+</body>
+</html>
