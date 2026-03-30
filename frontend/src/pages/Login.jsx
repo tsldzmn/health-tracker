@@ -39,7 +39,9 @@ export default function Login() {
           <label>密码</label>
           <input className="input-field" type="password" placeholder="请输入密码" value={password} onChange={e => setPassword(e.target.value)} required />
         </div>
-        <button className="btn btn-primary btn-full" type="submit">登录</button>
+        <button className="btn btn-primary btn-full" type="submit" disabled={loading}>
+          {loading ? '登录中...' : '登录'}
+        </button>
         <div className="auth-link">还没有账号？<Link to="/register">立即注册</Link></div>
       </form>
     </div>

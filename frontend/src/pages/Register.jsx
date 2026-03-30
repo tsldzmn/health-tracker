@@ -50,7 +50,9 @@ export default function Register() {
           <label>确认密码</label>
           <input className="input-field" type="password" placeholder="请再次输入密码" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
         </div>
-        <button className="btn btn-primary btn-full" type="submit">注册</button>
+        <button className="btn btn-primary btn-full" type="submit" disabled={loading}>
+          {loading ? '注册中...' : '注册'}
+        </button>
         <div className="auth-link">已有账号？<Link to="/login">立即登录</Link></div>
       </form>
     </div>

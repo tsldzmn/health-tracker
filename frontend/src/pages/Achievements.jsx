@@ -50,7 +50,7 @@ export default function Achievements() {
             </div>
             <div>
               <div style={{ fontSize: 36, fontWeight: 700, color: 'var(--accent-blue)' }}>
-                {user?.streakDays || 0}
+                {user?.streak_days || 0}
               </div>
               <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>连续天数</div>
             </div>
