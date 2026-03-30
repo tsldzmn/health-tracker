@@ -40,9 +40,11 @@ export default function Dashboard() {
     try {
       const data = await waterAPI.add(amount);
       setWaterData(prev => ({
-        ...prev,
-        total: data.totalToday,
-        percentage: data.percentage
+        ...(prev || {}),
+        entries: [...(prev?.entries || []), { id: Date.now(), amount, created_at: new Date().toISOString() }],
+        total: data.totalToday || 0,
+        goal: data.goal || 2000,
+        percentage: data.percentage || 0
       }));
     } catch (err) {
       console.error(err);

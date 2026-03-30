@@ -10,7 +10,6 @@ import WaterLog from './pages/WaterLog';
 import Profile from './pages/Profile';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
-import AdminUserDetail from './pages/admin/AdminUserDetail';
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
@@ -144,7 +143,6 @@ export default function App() {
           <Route path="/profile" element={<Guard><Profile /></Guard>} />
           <Route path="/admin" element={<Guard><AdminDashboard /></Guard>} />
           <Route path="/admin/users" element={<Guard><AdminUsers /></Guard>} />
-          <Route path="/admin/users/:id" element={<Guard><AdminUserDetail /></Guard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <NavbarWrapper />
