@@ -7,7 +7,6 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import FoodLog from './pages/FoodLog';
 import WaterLog from './pages/WaterLog';
-import Achievements from './pages/Achievements';
 import Profile from './pages/Profile';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
@@ -142,7 +141,6 @@ export default function App() {
           <Route path="/" element={<Guard><Dashboard /></Guard>} />
           <Route path="/food" element={<Guard><FoodLog /></Guard>} />
           <Route path="/water" element={<Guard><WaterLog /></Guard>} />
-          <Route path="/achievements" element={<Guard><Achievements /></Guard>} />
           <Route path="/profile" element={<Guard><Profile /></Guard>} />
           <Route path="/admin" element={<Guard><AdminDashboard /></Guard>} />
           <Route path="/admin/users" element={<Guard><AdminUsers /></Guard>} />
