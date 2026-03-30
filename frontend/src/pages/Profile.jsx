@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../App';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 export default function Profile() {
   const { user, updateProfile, logout } = useAuth();
@@ -190,6 +190,12 @@ export default function Profile() {
             </>
           )}
         </div>
+
+        {user?.is_admin === 1 && (
+          <Link to="/admin" className="btn btn-full" style={{ marginTop: 16, background: 'linear-gradient(135deg,#ff9500,#ff2d55)', color: 'white', textDecoration: 'none' }}>
+            ⚙️ 管理后台
+          </Link>
+        )}
 
         <button className="btn btn-danger btn-full" onClick={handleLogout} style={{ marginTop: 16 }}>
           退出登录

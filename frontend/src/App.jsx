@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import FoodLog from './pages/FoodLog';
 import WaterLog from './pages/WaterLog';
 import Profile from './pages/Profile';
+import AdminDashboard from './pages/admin/AdminDashboard';
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
@@ -139,6 +140,7 @@ export default function App() {
           <Route path="/food" element={<Guard><FoodLog /></Guard>} />
           <Route path="/water" element={<Guard><WaterLog /></Guard>} />
           <Route path="/profile" element={<Guard><Profile /></Guard>} />
+          <Route path="/admin" element={<Guard><AdminDashboard /></Guard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <NavbarWrapper />
