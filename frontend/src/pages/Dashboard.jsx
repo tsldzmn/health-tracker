@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../App';
 import { foodAPI, waterAPI, analysisAPI } from '../services/api';
 import { format, addDays, subDays } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -158,7 +158,9 @@ export default function Dashboard() {
 
         <h3 className="section-title">今日饮食记录</h3>
         {['breakfast', 'lunch', 'dinner', 'snack'].map(mealType => {
-          const entry = foodData?.entries?.find(e => e.mealType === mealType);
+          const entries = (foodData?.entries || []).filter(e => e.mealType === mealType);
+          const totalCal = entries.reduce((s, e) => s + (e.totalCalories || 0), 0);
+          const allFoods = entries.flatMap(e => e.foods || []);
           return (
             <div key={mealType} className="meal-card">
               <div className="meal-card-header">
@@ -166,11 +168,11 @@ export default function Dashboard() {
                   {mealEmojis[mealType]} {mealNames[mealType]}
                 </div>
                 <div className="meal-calories">
-                  {entry ? `${entry.totalCalories} kcal` : '未记录'}
+                  {allFoods.length > 0 ? `${totalCal} kcal` : '暂无'}
                 </div>
               </div>
-              {entry ? (
-                (entry.foods || []).map((food, i) => (
+              {allFoods.length > 0 ? (
+                allFoods.map((food, i) => (
                   <div key={i} className="food-item">
                     <div className="food-info">
                       <div className="food-name">{food.name}</div>
@@ -179,11 +181,7 @@ export default function Dashboard() {
                     <div className="food-calories">{food.calories} kcal</div>
                   </div>
                 ))
-              ) : (
-                <div style={{ color: 'var(--text-tertiary)', fontSize: 14, padding: '8px 0' }}>
-                  点击添加食物记录
-                </div>
-              )}
+              ) : null}
             </div>
           );
         })}

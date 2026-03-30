@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../App';
 
 export default function Register() {
   const [username, setUsername] = useState('');
@@ -8,25 +8,14 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const { register } = useAuth();
-  const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
-    if (password !== confirmPassword) {
-      setError('两次密码不一致');
-      return;
-    }
-    setLoading(true);
-    try {
-      await register(username, email, password);
-      navigate('/');
-    } catch (err) {
-      setError(err.message);
-    }
-    setLoading(false);
+    if (password !== confirmPassword) { setError('两次密码不一致'); return; }
+    if (password.length < 6) { setError('密码至少6位'); return; }
+    register(username, email);
   };
 
   return (
@@ -40,55 +29,22 @@ export default function Register() {
         {error && <div className="toast" style={{ position: 'static', marginBottom: 16 }}>{error}</div>}
         <div className="input-group">
           <label>用户名</label>
-          <input
-            className="input-field"
-            type="text"
-            placeholder="请输入用户名"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
+          <input className="input-field" type="text" placeholder="请输入用户名" value={username} onChange={e => setUsername(e.target.value)} required />
         </div>
         <div className="input-group">
           <label>邮箱</label>
-          <input
-            className="input-field"
-            type="email"
-            placeholder="请输入邮箱"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+          <input className="input-field" type="email" placeholder="请输入邮箱" value={email} onChange={e => setEmail(e.target.value)} required />
         </div>
         <div className="input-group">
           <label>密码</label>
-          <input
-            className="input-field"
-            type="password"
-            placeholder="请输入密码（至少6位）"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
+          <input className="input-field" type="password" placeholder="请输入密码（至少6位）" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
         </div>
         <div className="input-group">
           <label>确认密码</label>
-          <input
-            className="input-field"
-            type="password"
-            placeholder="请再次输入密码"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-          />
+          <input className="input-field" type="password" placeholder="请再次输入密码" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
         </div>
-        <button className="btn btn-primary btn-full" type="submit" disabled={loading}>
-          {loading ? '注册中...' : '注册'}
-        </button>
-        <div className="auth-link">
-          已有账号？<Link to="/login">立即登录</Link>
-        </div>
+        <button className="btn btn-primary btn-full" type="submit">注册</button>
+        <div className="auth-link">已有账号？<Link to="/login">立即登录</Link></div>
       </form>
     </div>
   );

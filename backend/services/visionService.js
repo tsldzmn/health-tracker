@@ -1,120 +1,85 @@
 const axios = require('axios');
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || 'sk-ffef02f36dcd4b599691605d35135215';
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
-
-const FOOD_DATABASE = {
-  '米饭': { calories: 116, protein: 2.6, carbs: 25.9, fat: 0.3 },
-  '面条': { calories: 137, protein: 4.5, carbs: 25.2, fat: 2.1 },
-  '馒头': { calories: 223, protein: 7, carbs: 44.2, fat: 1.1 },
-  '面包': { calories: 312, protein: 8.3, carbs: 58.6, fat: 5.1 },
-  '鸡蛋': { calories: 144, protein: 13.3, carbs: 2.8, fat: 8.8 },
-  '牛奶': { calories: 54, protein: 3, carbs: 3.4, fat: 3.2 },
-  '鸡胸肉': { calories: 133, protein: 31, carbs: 0, fat: 1.2 },
-  '牛肉': { calories: 125, protein: 19.9, carbs: 2, fat: 4.2 },
-  '猪肉': { calories: 143, protein: 20.3, carbs: 0, fat: 6.2 },
-  '鱼肉': { calories: 113, protein: 16.6, carbs: 0, fat: 5.2 },
-  '虾': { calories: 87, protein: 18.6, carbs: 0, fat: 0.8 },
-  '豆腐': { calories: 73, protein: 8.1, carbs: 1.8, fat: 3.7 },
-  '西兰花': { calories: 36, protein: 3.7, carbs: 7.2, fat: 0.4 },
-  '番茄': { calories: 15, protein: 0.9, carbs: 3.3, fat: 0.2 },
-  '苹果': { calories: 53, protein: 0.2, carbs: 13.5, fat: 0.2 },
-  '香蕉': { calories: 93, protein: 1.4, carbs: 22, fat: 0.2 }
-};
 
 async function recognizeFood(imageBase64) {
   try {
-    const response = await axios.post(DEEPSEEK_API_URL, {
+    console.log('调用DeepSeek识别...');
+
+    const response = await axios.post('https://api.deepseek.com/chat/completions', {
       model: 'deepseek-chat',
       messages: [
         {
           role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: '识别图中所有食物，返回JSON数组，格式：[{"name":"食物名","amount":克数,"calories":总热量,"protein":蛋白质g,"carbs":碳水g,"fat":脂肪g}]。只返回JSON，不要其他文字。'
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:image/jpeg;base64,${imageBase64}`
-              }
-            }
-          ]
+          content: `你是专业的营养师。请识别这张食物图片中的所有食物，估算每种食物的重量（克）和营养成分。
+
+请严格按以下JSON格式返回，只返回JSON数组，不要任何其他文字：
+[{"name":"食物名称","amount":重量克数,"calories":总卡路里,"protein":蛋白质克数,"carbs":碳水化合物克数,"fat":脂肪克数}]
+
+注意：
+1. 食物名称用中文
+2. 重量和营养数据要基于常见分量合理估算
+3. 如果图片不包含食物，返回空数组 []`,
+          images: [`data:image/jpeg;base64,${imageBase64}`]
         }
       ],
-      max_tokens: 500
+      max_tokens: 800
     }, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
       },
-      timeout: 30000
+      timeout: 45000
     });
 
     const content = response.data.choices[0].message.content.trim();
-    let foods = [];
+    console.log('DeepSeek返回:', content);
 
+    let foods = [];
     try {
-      const jsonMatch = content.match(/\[.*\]/s);
+      const jsonMatch = content.match(/\[[\s\S]*?\]/);
       if (jsonMatch) {
         foods = JSON.parse(jsonMatch[0]);
       }
-    } catch (parseError) {
-      console.error('JSON解析失败:', content);
-      return fallbackRecognition();
+    } catch (e) {
+      console.error('JSON解析失败:', e.message);
     }
 
-    if (!Array.isArray(foods) || foods.length === 0) {
-      return fallbackRecognition();
+    if (Array.isArray(foods) && foods.length > 0) {
+      return {
+        success: true,
+        source: 'deepseek',
+        results: foods.map(f => ({
+          name: f.name || '未知',
+          amount: Number(f.amount) || 100,
+          calories: Number(f.calories) || 100,
+          protein: Number(f.protein) || 0,
+          carbs: Number(f.carbs) || 0,
+          fat: Number(f.fat) || 0,
+          probability: 88
+        }))
+      };
     }
 
-    const results = foods.map(food => ({
-      name: food.name || '未知食物',
-      amount: food.amount || 100,
-      calories: food.calories || 100,
-      protein: food.protein || 0,
-      carbs: food.carbs || 0,
-      fat: food.fat || 0,
-      probability: 90
-    }));
-
-    return {
-      success: true,
-      source: 'deepseek',
-      results
-    };
+    return fallback();
 
   } catch (error) {
-    console.error('DeepSeek识别失败:', error.message);
-    return fallbackRecognition();
+    console.error('DeepSeek错误:', error.response?.data || error.message);
+    return fallback();
   }
 }
 
-function fallbackRecognition() {
-  const foods = Object.keys(FOOD_DATABASE);
-  const randomFoods = [];
-  const count = 2 + Math.floor(Math.random() * 2);
-
-  for (let i = 0; i < count; i++) {
-    const name = foods[Math.floor(Math.random() * foods.length)];
-    const data = FOOD_DATABASE[name];
-    randomFoods.push({
-      name,
-      amount: 100 + Math.floor(Math.random() * 100),
-      calories: Math.round(data.calories * (1 + Math.random() * 0.5)),
-      protein: data.protein,
-      carbs: data.carbs,
-      fat: data.fat,
-      probability: 70
-    });
-  }
-
+function fallback() {
+  const foods = [
+    { name: '米饭', amount: 150, calories: 174, protein: 3.9, carbs: 38.9, fat: 0.5 },
+    { name: '鸡胸肉', amount: 120, calories: 160, protein: 37.2, carbs: 0, fat: 1.4 },
+    { name: '西兰花', amount: 100, calories: 36, protein: 3.7, carbs: 7.2, fat: 0.4 }
+  ];
   return {
     success: true,
     source: 'fallback',
-    results: randomFoods,
-    message: 'AI识别暂时不可用，已返回参考数据，请根据实际情况调整'
+    results: foods,
+    message: 'AI识别暂时不可用，请根据实际食物手动修改'
   };
 }
 
