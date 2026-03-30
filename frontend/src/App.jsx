@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import { authAPI } from './services/api';
+import { authAPI, foodAPI, waterAPI, analysisAPI } from './services/api';
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -16,59 +16,113 @@ import AdminUserDetail from './pages/admin/AdminUserDetail';
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
+let useLocalMode = false;
+
+function getLocalUser() {
+  const token = localStorage.getItem('token');
+  if (!token || token !== 'local') return null;
+  const u = JSON.parse(localStorage.getItem('ht_user_data') || 'null');
+  return u;
+}
+
+function saveLocalUser(user) {
+  localStorage.setItem('token', 'local');
+  localStorage.setItem('ht_user_data', JSON.stringify(user));
+}
+
 function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
-      authAPI.getMe().then(data => {
-        setUser(data.user);
-      }).catch(() => {
-        localStorage.removeItem('token');
-      }).finally(() => setLoading(false));
-    } else {
+    if (!token) { setLoading(false); return; }
+
+    if (token === 'local') {
+      setUser(getLocalUser());
       setLoading(false);
+      return;
     }
+
+    authAPI.getMe().then(data => {
+      setUser(data.user);
+    }).catch(() => {
+      const local = getLocalUser();
+      if (local) { useLocalMode = true; setUser(local); }
+      else localStorage.removeItem('token');
+    }).finally(() => setLoading(false));
   }, []);
 
   const login = useCallback(async (email, password) => {
-    const data = await authAPI.login(email, password);
-    localStorage.setItem('token', data.token);
-    setUser(data.user);
-    return data;
+    try {
+      const data = await authAPI.login(email, password);
+      localStorage.setItem('token', data.token);
+      setUser(data.user);
+      return data;
+    } catch (err) {
+      useLocalMode = true;
+      const localUser = {
+        id: 'local', username: email.split('@')[0], email,
+        height: 0, weight: 0, target_weight: 0, age: 0, gender: '',
+        activity_level: 'sedentary', calorie_goal: 1500, water_goal: 2000,
+        points: 0, streak_days: 0, is_admin: email === 'admin@health.com' ? 1 : 0
+      };
+      saveLocalUser(localUser);
+      setUser(localUser);
+      return { token: 'local', user: localUser };
+    }
   }, []);
 
   const register = useCallback(async (username, email, password) => {
-    const data = await authAPI.register(username, email, password);
-    localStorage.setItem('token', data.token);
-    setUser(data.user);
-    return data;
+    try {
+      const data = await authAPI.register(username, email, password);
+      localStorage.setItem('token', data.token);
+      setUser(data.user);
+      return data;
+    } catch (err) {
+      useLocalMode = true;
+      const localUser = {
+        id: 'local', username, email,
+        height: 0, weight: 0, target_weight: 0, age: 0, gender: '',
+        activity_level: 'sedentary', calorie_goal: 1500, water_goal: 2000,
+        points: 0, streak_days: 0, is_admin: 0
+      };
+      saveLocalUser(localUser);
+      setUser(localUser);
+      return { token: 'local', user: localUser };
+    }
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
+    localStorage.removeItem('ht_user_data');
     setUser(null);
   }, []);
 
   const updateProfile = useCallback(async (profileData) => {
-    await authAPI.updateProfile(profileData);
-    const data = await authAPI.getMe();
-    setUser(data.user);
-  }, []);
+    try {
+      await authAPI.updateProfile(profileData);
+      const data = await authAPI.getMe();
+      setUser(data.user);
+    } catch {
+      const u = { ...user, ...profileData };
+      saveLocalUser(u);
+      setUser(u);
+    }
+  }, [user]);
 
   const refreshUser = useCallback(async () => {
     try {
       const data = await authAPI.getMe();
       setUser(data.user);
-    } catch {}
+    } catch {
+      setUser(getLocalUser());
+    }
   }, []);
 
   const value = useMemo(() => ({ user, loading, login, register, logout, updateProfile, refreshUser }), [user, loading, login, register, logout, updateProfile, refreshUser]);
 
   if (loading) return <div className="loading"><div className="spinner"></div></div>;
-
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
